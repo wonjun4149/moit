@@ -35,6 +35,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 0 20px;
+    width: 100%;
 }
 
 .nav-left {
@@ -178,10 +179,11 @@ body {
 
 /* 왼쪽 콘텐츠 */
 .left-content {
-    flex: 1;
-    padding: 80px 60px;
+    flex: 1.2;
+    padding: 80px 40px 80px 60px;
     display: flex;
     align-items: center;
+    justify-content: center;
     opacity: 0;
     transform: translateX(-50px);
     transition: all 0.8s ease-out;
@@ -193,7 +195,8 @@ body {
 }
 
 .content-wrapper {
-    max-width: 500px;
+    max-width: 650px;
+    width: 100%;
 }
 
 .main-title {
@@ -256,9 +259,27 @@ body {
     font-weight: 600;
 }
 
+/* 메인 설명 텍스트 스타일 - 더 강력한 적용 */
+.description .main-desc {
+    font-weight: bold !important;
+    font-size: 20px !important;
+    color: #333 !important;
+    line-height: 1.6 !important;
+}
+
+/* 철학 텍스트 스타일 - 더 강력한 적용 */
+.description .philosophy {
+    font-weight: bold !important;
+    color: #333 !important;
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: unset !important;
+    background-clip: unset !important;
+}
+
 /* 오른쪽 이미지 */
 .right-image {
-    flex: 1;
+    flex: 0.8;
     background: linear-gradient(135deg, #4A90E2, #357ABD);
     position: relative;
     overflow: hidden;
@@ -419,6 +440,12 @@ body {
 
     .left-content {
         padding: 40px 30px;
+        flex: 1;
+        justify-content: flex-start;
+    }
+
+    .content-wrapper {
+        max-width: 100%;
     }
 
     .main-title {
@@ -449,6 +476,11 @@ body {
 @media (max-width: 480px) {
     .left-content {
         padding: 30px 20px;
+        justify-content: flex-start;
+    }
+
+    .content-wrapper {
+        max-width: 100%;
     }
 
     .main-title {
@@ -457,6 +489,14 @@ body {
 
     .description {
         font-size: 14px;
+    }
+
+    .description .main-desc {
+        font-size: 16px !important;
+    }
+
+    .description .main-desc {
+        font-size: 18px !important;
     }
 
     .nav-container {

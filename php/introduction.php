@@ -26,7 +26,7 @@ $site_title = "MOIT - 소개";
                 <div class="logo"><a href="../index.php">MOIT</a></div>
                 <ul class="nav-menu">
                     <li><a href="introduction.php" class="active">소개</a></li>
-                    <li><a href="#hobby">취미 추천</a></li>
+                    <li><a href="hobby_recommendation.php">취미 추천</a></li>
                     <li><a href="#meeting">모임</a></li>
                     <li><a href="#community">커뮤니티</a></li>
                 </ul>

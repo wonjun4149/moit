@@ -34,7 +34,7 @@ if (isset($_GET['logout']) && $_GET['logout'] == '1') {
                 <div class="logo"><?php echo $site_title; ?></div>
                 <ul class="nav-menu">
                     <li><a href="php/introduction.php">소개</a></li>
-                    <li><a href="#hobby">취미 추천</a></li>
+                    <li><a href="php/hobby_recommendation.php">취미 추천</a></li>
                     <li><a href="#meeting">모임</a></li>
                     <li><a href="#community">커뮤니티</a></li>
                 </ul>
