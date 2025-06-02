@@ -1,11 +1,34 @@
 <?php
-// 취미 추천 페이지
+// 개선된 취미 추천 페이지 - 점수 기반 추천 시스템
 require_once 'config.php';
+
+// 디버그 모드 확인
+$debug_mode = isset($_GET['debug']) || isset($_POST['debug']);
+
+// 디버그 출력 함수
+function debug_output($message, $data = null) {
+    global $debug_mode;
+    if ($debug_mode) {
+        echo "<div style='background: #f0f0f0; padding: 10px; margin: 5px; border-left: 4px solid #007cba;'>";
+        echo "<strong>DEBUG:</strong> " . htmlspecialchars($message);
+        if ($data !== null) {
+            echo "<pre>" . htmlspecialchars(print_r($data, true)) . "</pre>";
+        }
+        echo "</div>";
+    }
+}
+
+debug_output("페이지 로드 시작");
+debug_output("REQUEST_METHOD", $_SERVER['REQUEST_METHOD']);
+debug_output("POST 데이터", $_POST);
 
 // 로그인 확인
 if (!isLoggedIn()) {
+    debug_output("로그인되지 않음");
     redirect('login.php');
 }
+
+debug_output("로그인 확인됨", $_SESSION['user_id']);
 
 $site_title = "MOIT - 취미 추천";
 $error_message = '';
@@ -15,9 +38,11 @@ $meetup_posts = [];
 
 // 데이터베이스 연결
 try {
+    debug_output("데이터베이스 연결 시도");
     $pdo = getDBConnection();
+    debug_output("데이터베이스 연결 성공");
     
-    // 인기 취미 가져오기 (추천 횟수 기준)
+    // 인기 취미 가져오기
     $stmt = $pdo->query("
         SELECT h.*, COUNT(hr.hobby_id) as recommendation_count
         FROM hobbies h
@@ -27,127 +52,192 @@ try {
         LIMIT 10
     ");
     $popular_hobbies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    debug_output("인기 취미 로드됨", count($popular_hobbies) . "개");
     
 } catch (PDOException $e) {
+    debug_output("데이터베이스 에러", $e->getMessage());
     $error_message = '데이터를 불러오는 중 오류가 발생했습니다.';
 }
 
-// 설문 제출 처리
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
+// 설문 제출 처리 - 개선된 추천 알고리즘
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['submit_survey']) || isset($_POST['survey_submitted']))) {
+    debug_output("=== 설문 제출 처리 시작 ===");
+    
     try {
-        // 디버깅을 위한 로그
-        error_log("Survey submission started");
-        
         $activity_preference = $_POST['activity_preference'] ?? '';
         $physical_preference = $_POST['physical_preference'] ?? '';
         $group_preference = $_POST['group_preference'] ?? '';
         $cost_preference = $_POST['cost_preference'] ?? '';
         $time_preference = $_POST['time_preference'] ?? '';
         
+        debug_output("설문 답변들", [
+            'activity_preference' => $activity_preference,
+            'physical_preference' => $physical_preference,
+            'group_preference' => $group_preference,
+            'cost_preference' => $cost_preference,
+            'time_preference' => $time_preference
+        ]);
+        
         // 모든 값이 입력되었는지 확인
         if (empty($activity_preference) || empty($physical_preference) || empty($group_preference) || 
             empty($cost_preference) || empty($time_preference)) {
+            debug_output("일부 답변 누락");
             $error_message = '모든 질문에 답변해주세요.';
         } else {
+            debug_output("모든 답변 완료 - 데이터베이스 저장 시작");
+            
             // 설문 응답 저장
             $stmt = $pdo->prepare("
                 INSERT INTO hobby_surveys (user_id, activity_preference, physical_preference, group_preference, cost_preference, time_preference) 
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
-            $stmt->execute([$_SESSION['user_id'], $activity_preference, $physical_preference, $group_preference, $cost_preference, $time_preference]);
+            $result = $stmt->execute([$_SESSION['user_id'], $activity_preference, $physical_preference, $group_preference, $cost_preference, $time_preference]);
             $survey_id = $pdo->lastInsertId();
             
-            error_log("Survey saved with ID: " . $survey_id);
+            debug_output("설문 저장 결과", "성공: " . ($result ? 'YES' : 'NO') . ", ID: $survey_id");
             
-            // 취미 추천 알고리즘
-            $where_conditions = [];
-            $params = [];
-            
-            if ($activity_preference !== '상관없음') {
-                $where_conditions[] = "(activity_type = ? OR activity_type = '혼합')";
-                $params[] = $activity_preference;
+            if (!$result) {
+                throw new Exception("설문 저장에 실패했습니다.");
             }
             
-            if ($physical_preference !== '상관없음') {
-                $where_conditions[] = "physical_level = ?";
-                $params[] = $physical_preference;
-            }
+            // 개선된 점수 기반 추천 알고리즘
+            debug_output("=== 개선된 추천 알고리즘 시작 ===");
             
-            if ($group_preference !== '상관없음') {
-                $where_conditions[] = "(group_size = ? OR group_size = '상관없음')";
-                $params[] = $group_preference;
-            }
-            
-            if ($cost_preference !== '상관없음') {
-                $where_conditions[] = "cost_level = ?";
-                $params[] = $cost_preference;
-            }
-            
-            $where_clause = empty($where_conditions) ? "" : "WHERE " . implode(" AND ", $where_conditions);
-            
+            // 점수 기반 쿼리 (모든 취미에 대해 점수 계산)
             $query = "
                 SELECT *, 
-                (CASE 
-                    WHEN activity_type = ? OR activity_type = '혼합' THEN 0.3 ELSE 0
-                END +
-                CASE 
-                    WHEN physical_level = ? THEN 0.3 ELSE 0
-                END +
-                CASE 
-                    WHEN group_size = ? OR group_size = '상관없음' THEN 0.2 ELSE 0
-                END +
-                CASE 
-                    WHEN cost_level = ? THEN 0.2 ELSE 0
-                END) as score
-                FROM hobbies $where_clause
+                (
+                    -- 활동 장소 점수 (30%)
+                    CASE 
+                        WHEN ? = '상관없음' THEN 0.3
+                        WHEN activity_type = ? THEN 0.3
+                        WHEN activity_type = '혼합' THEN 0.2
+                        ELSE 0
+                    END +
+                    
+                    -- 체력 요구도 점수 (30%) 
+                    CASE 
+                        WHEN ? = '상관없음' THEN 0.3
+                        WHEN physical_level = ? THEN 0.3
+                        WHEN (? = '높음' AND physical_level = '보통') THEN 0.15
+                        WHEN (? = '보통' AND physical_level IN ('높음', '낮음')) THEN 0.15
+                        WHEN (? = '낮음' AND physical_level = '보통') THEN 0.15
+                        ELSE 0
+                    END +
+                    
+                    -- 그룹 규모 점수 (20%)
+                    CASE 
+                        WHEN ? = '상관없음' THEN 0.2
+                        WHEN group_size = ? THEN 0.2
+                        WHEN group_size = '상관없음' THEN 0.15
+                        ELSE 0
+                    END +
+                    
+                    -- 비용 점수 (20%)
+                    CASE 
+                        WHEN ? = '상관없음' THEN 0.2
+                        WHEN cost_level = ? THEN 0.2
+                        WHEN (? = '무료' AND cost_level = '저비용') THEN 0.1
+                        WHEN (? = '저비용' AND cost_level IN ('무료', '중비용')) THEN 0.1
+                        WHEN (? = '중비용' AND cost_level IN ('저비용', '고비용')) THEN 0.1
+                        WHEN (? = '고비용' AND cost_level = '중비용') THEN 0.1
+                        ELSE 0
+                    END
+                ) as score
+                FROM hobbies 
+                HAVING score > 0
                 ORDER BY score DESC, name ASC
                 LIMIT 6
             ";
             
+            // 파라미터 준비 (각 조건마다 필요한 만큼 반복)
+            $params = [
+                // 활동 장소 (2개)
+                $activity_preference, $activity_preference,
+                // 체력 요구도 (5개)  
+                $physical_preference, $physical_preference, $physical_preference, $physical_preference, $physical_preference,
+                // 그룹 규모 (2개)
+                $group_preference, $group_preference,
+                // 비용 (6개)
+                $cost_preference, $cost_preference, $cost_preference, $cost_preference, $cost_preference, $cost_preference
+            ];
+            
+            debug_output("개선된 쿼리", $query);
+            debug_output("파라미터", $params);
+            
             $stmt = $pdo->prepare($query);
-            $search_params = [$activity_preference, $physical_preference, $group_preference, $cost_preference];
-            $stmt->execute(array_merge($search_params, $params));
+            $stmt->execute($params);
             $recommendations = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            error_log("Found " . count($recommendations) . " recommendations");
+            debug_output("=== 추천 결과 ===");
+            debug_output("추천 개수", count($recommendations));
             
-            // 추천 기록 저장
-            foreach ($recommendations as $hobby) {
-                $stmt = $pdo->prepare("
-                    INSERT INTO hobby_recommendations (user_id, hobby_id, survey_id, recommendation_score) 
-                    VALUES (?, ?, ?, ?)
-                ");
-                $stmt->execute([$_SESSION['user_id'], $hobby['id'], $survey_id, $hobby['score']]);
+            if (count($recommendations) > 0) {
+                debug_output("추천 취미 목록", array_column($recommendations, 'name'));
+                debug_output("추천 점수들", array_column($recommendations, 'score'));
+                
+                // 각 추천 취미의 상세 점수 분석
+                foreach ($recommendations as $i => $hobby) {
+                    debug_output("취미 #{$i}: {$hobby['name']}", [
+                        'score' => $hobby['score'],
+                        'activity_type' => $hobby['activity_type'],
+                        'physical_level' => $hobby['physical_level'], 
+                        'group_size' => $hobby['group_size'],
+                        'cost_level' => $hobby['cost_level']
+                    ]);
+                }
+                
+                // 추천 기록 저장
+                foreach ($recommendations as $hobby) {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO hobby_recommendations (user_id, hobby_id, survey_id, recommendation_score) 
+                        VALUES (?, ?, ?, ?)
+                    ");
+                    $stmt->execute([$_SESSION['user_id'], $hobby['id'], $survey_id, $hobby['score']]);
+                }
+                debug_output("추천 기록 저장 완료");
+            } else {
+                debug_output("여전히 추천 결과 없음");
+                
+                // 최후의 수단: 점수 없이 모든 취미 가져오기
+                $stmt = $pdo->query("SELECT * FROM hobbies ORDER BY name LIMIT 3");
+                $fallback_hobbies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (count($fallback_hobbies) > 0) {
+                    debug_output("대체 추천 사용", count($fallback_hobbies) . "개");
+                    $recommendations = $fallback_hobbies;
+                    
+                    // 기본 점수 부여
+                    foreach ($recommendations as &$hobby) {
+                        $hobby['score'] = 0.5; // 기본 점수
+                    }
+                    
+                    // 대체 추천도 기록 저장
+                    foreach ($recommendations as $hobby) {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO hobby_recommendations (user_id, hobby_id, survey_id, recommendation_score) 
+                            VALUES (?, ?, ?, ?)
+                        ");
+                        $stmt->execute([$_SESSION['user_id'], $hobby['id'], $survey_id, 0.5]);
+                    }
+                }
             }
-            
-            error_log("Survey processing completed successfully");
         }
         
-    } catch (PDOException $e) {
-        error_log("Survey processing error: " . $e->getMessage());
+    } catch (Exception $e) {
+        debug_output("예외 발생", $e->getMessage());
+        debug_output("스택 트레이스", $e->getTraceAsString());
         $error_message = '설문 처리 중 오류가 발생했습니다: ' . $e->getMessage();
     }
+    
+    debug_output("=== 설문 처리 완료 ===");
 }
 
-// 선택된 취미의 모집 공고 가져오기
-if (isset($_GET['hobby_id'])) {
-    try {
-        $hobby_id = (int)$_GET['hobby_id'];
-        $stmt = $pdo->prepare("
-            SELECT mp.*, u.nickname as organizer_nickname, h.name as hobby_name
-            FROM meetup_posts mp
-            JOIN users u ON mp.organizer_id = u.id
-            JOIN hobbies h ON mp.hobby_id = h.id
-            WHERE mp.hobby_id = ? AND mp.status = '모집중'
-            ORDER BY mp.created_at DESC
-            LIMIT 10
-        ");
-        $stmt->execute([$hobby_id]);
-        $meetup_posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $error_message = '모집 공고를 불러오는 중 오류가 발생했습니다.';
-    }
-}
+debug_output("최종 상태", [
+    'recommendations_count' => count($recommendations),
+    'error_message' => $error_message,
+    'popular_hobbies_count' => count($popular_hobbies)
+]);
 ?>
 
 <!DOCTYPE html>
@@ -159,6 +249,20 @@ if (isset($_GET['hobby_id'])) {
     <link rel="stylesheet" href="../css/hobby_recommendation-style.css">
 </head>
 <body>
+    <!-- 디버그 정보 표시 -->
+    <?php if ($debug_mode): ?>
+        <div style="background: #ffffcc; padding: 15px; margin: 10px; border: 2px solid #ffcc00;">
+            <h3>🐛 디버그 모드 활성화</h3>
+            <p><strong>현재 상태:</strong></p>
+            <ul>
+                <li>POST 요청: <?php echo ($_SERVER['REQUEST_METHOD'] == 'POST') ? '✅' : '❌'; ?></li>
+                <li>설문 제출: <?php echo (isset($_POST['submit_survey']) || isset($_POST['survey_submitted'])) ? '✅' : '❌'; ?></li>
+                <li>추천 결과: <?php echo count($recommendations); ?>개</li>
+                <li>에러: <?php echo $error_message ?: '없음'; ?></li>
+            </ul>
+        </div>
+    <?php endif; ?>
+
     <!-- 상단 네비게이션 -->
     <nav class="navbar">
         <div class="nav-container">
@@ -209,7 +313,15 @@ if (isset($_GET['hobby_id'])) {
                         <p class="survey-subtitle">몇 가지 질문으로 맞춤 취미를 추천해드릴게요!</p>
                         
                         <form method="POST" class="survey-form" id="surveyForm">
-                            <!-- 질문 1: 활동성 -->
+                            <!-- 히든 필드 추가 -->
+                            <input type="hidden" name="survey_submitted" value="1">
+                            
+                            <!-- 디버그 모드일 때 히든 필드 추가 -->
+                            <?php if ($debug_mode): ?>
+                                <input type="hidden" name="debug" value="1">
+                            <?php endif; ?>
+                            
+                            <!-- 질문들 (동일) -->
                             <div class="question-step active" data-step="1">
                                 <div class="question-group">
                                     <label class="question-label">활동적인 취미를 선호하시나요?</label>
@@ -230,7 +342,6 @@ if (isset($_GET['hobby_id'])) {
                                 </div>
                             </div>
 
-                            <!-- 질문 2: 장소 -->
                             <div class="question-step" data-step="2">
                                 <div class="question-group">
                                     <label class="question-label">어디서 활동하는 것을 선호하시나요?</label>
@@ -251,7 +362,6 @@ if (isset($_GET['hobby_id'])) {
                                 </div>
                             </div>
 
-                            <!-- 질문 3: 그룹 규모 -->
                             <div class="question-step" data-step="3">
                                 <div class="question-group">
                                     <label class="question-label">몇 명과 함께 하고 싶으세요?</label>
@@ -276,7 +386,6 @@ if (isset($_GET['hobby_id'])) {
                                 </div>
                             </div>
 
-                            <!-- 질문 4: 비용 -->
                             <div class="question-step" data-step="4">
                                 <div class="question-group">
                                     <label class="question-label">비용은 어느 정도까지 괜찮으세요?</label>
@@ -301,7 +410,6 @@ if (isset($_GET['hobby_id'])) {
                                 </div>
                             </div>
 
-                            <!-- 질문 5: 시간 -->
                             <div class="question-step" data-step="5">
                                 <div class="question-group">
                                     <label class="question-label">언제 활동하고 싶으세요?</label>
@@ -333,8 +441,8 @@ if (isset($_GET['hobby_id'])) {
                 <?php else: ?>
                     <!-- 추천 결과 -->
                     <div class="recommendations-container">
-                        <h2>맞춤 취미 추천</h2>
-                        <p class="recommendations-subtitle">설문 결과를 바탕으로 추천해드려요!</p>
+                        <h2>🎉 맞춤 취미 추천</h2>
+                        <p class="recommendations-subtitle">설문 결과를 바탕으로 <?php echo count($recommendations); ?>개의 취미를 추천해드려요!</p>
                         
                         <div class="hobby-cards">
                             <?php foreach ($recommendations as $hobby): ?>
@@ -364,69 +472,32 @@ if (isset($_GET['hobby_id'])) {
                 <?php endif; ?>
             </div>
 
-            <!-- 오른쪽: 인기 취미 또는 모집 공고 -->
+            <!-- 오른쪽: 인기 취미 -->
             <div class="right-section">
-                <?php if (!empty($meetup_posts)): ?>
-                    <!-- 모집 공고 -->
-                    <h3>현재 요집 중인 모임이에요</h3>
-                    <div class="meetup-cards">
-                        <?php foreach ($meetup_posts as $post): ?>
-                            <div class="meetup-card">
-                                <div class="meetup-header">
-                                    <h4 class="meetup-title"><?php echo htmlspecialchars($post['title']); ?></h4>
-                                    <span class="meetup-status"><?php echo $post['status']; ?></span>
-                                </div>
-                                <p class="meetup-description"><?php echo htmlspecialchars(substr($post['description'], 0, 100)) . '...'; ?></p>
-                                <div class="meetup-info">
-                                    <div class="meetup-detail">
-                                        <span class="detail-label">주최자:</span>
-                                        <span class="detail-value"><?php echo htmlspecialchars($post['organizer_nickname']); ?></span>
-                                    </div>
-                                    <div class="meetup-detail">
-                                        <span class="detail-label">장소:</span>
-                                        <span class="detail-value"><?php echo htmlspecialchars($post['location']); ?></span>
-                                    </div>
-                                    <div class="meetup-detail">
-                                        <span class="detail-label">일시:</span>
-                                        <span class="detail-value"><?php echo date('m/d H:i', strtotime($post['meeting_date'])); ?></span>
-                                    </div>
-                                    <div class="meetup-detail">
-                                        <span class="detail-label">인원:</span>
-                                        <span class="detail-value"><?php echo $post['current_participants']; ?>/<?php echo $post['max_participants']; ?>명</span>
-                                    </div>
-                                </div>
-                                <button class="join-btn">참여하기</button>
+                <h3>요즘 이런 취미로 많이 모여요</h3>
+                <div class="popular-hobbies">
+                    <?php foreach ($popular_hobbies as $index => $hobby): ?>
+                        <div class="popular-hobby-item" onclick="loadMeetups(<?php echo $hobby['id']; ?>)">
+                            <div class="hobby-rank"><?php echo $index + 1; ?></div>
+                            <div class="hobby-info">
+                                <h4 class="hobby-name"><?php echo htmlspecialchars($hobby['name']); ?></h4>
+                                <span class="hobby-category"><?php echo htmlspecialchars($hobby['category']); ?></span>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <!-- 인기 취미 -->
-                    <h3>요즘 이런 취미로 많이 모여요</h3>
-                    <div class="popular-hobbies">
-                        <?php foreach ($popular_hobbies as $index => $hobby): ?>
-                            <div class="popular-hobby-item" onclick="loadMeetups(<?php echo $hobby['id']; ?>)">
-                                <div class="hobby-rank"><?php echo $index + 1; ?></div>
-                                <div class="hobby-info">
-                                    <h4 class="hobby-name"><?php echo htmlspecialchars($hobby['name']); ?></h4>
-                                    <span class="hobby-category"><?php echo htmlspecialchars($hobby['category']); ?></span>
-                                </div>
-                                <div class="hobby-count">
-                                    <span><?php echo $hobby['recommendation_count']; ?>회 추천</span>
-                                </div>
+                            <div class="hobby-count">
+                                <span><?php echo $hobby['recommendation_count']; ?>회 추천</span>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
     </main>
 
     <script>
-        // 설문조사 단계 관리
+        // 설문조사 단계 관리 JavaScript (동일)
         let currentStep = 1;
         const totalSteps = 5;
 
-        // DOM 요소들
         const questionSteps = document.querySelectorAll('.question-step');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
@@ -435,11 +506,9 @@ if (isset($_GET['hobby_id'])) {
         const progressText = document.getElementById('progressText');
         const surveyForm = document.getElementById('surveyForm');
 
-        // 초기 설정
         updateStepDisplay();
         updateProgress();
 
-        // 이전 버튼 클릭
         prevBtn?.addEventListener('click', function() {
             if (currentStep > 1) {
                 currentStep--;
@@ -448,7 +517,6 @@ if (isset($_GET['hobby_id'])) {
             }
         });
 
-        // 다음 버튼 클릭
         nextBtn?.addEventListener('click', function() {
             if (validateCurrentStep()) {
                 if (currentStep < totalSteps) {
@@ -461,31 +529,32 @@ if (isset($_GET['hobby_id'])) {
             }
         });
 
-        // 제출 버튼 클릭
-        submitBtn?.addEventListener('click', function() {
+        submitBtn?.addEventListener('click', function(e) {
+            e.preventDefault();
+            
             if (validateCurrentStep()) {
-                submitBtn.textContent = '분석 중...';
-                submitBtn.disabled = true;
-                surveyForm.submit();
+                const allAnswered = ['physical_preference', 'activity_preference', 'group_preference', 'cost_preference', 'time_preference'].every(name => {
+                    const checked = document.querySelector(`input[name="${name}"]:checked`);
+                    return checked !== null;
+                });
+                
+                if (allAnswered) {
+                    submitBtn.textContent = '분석 중...';
+                    submitBtn.disabled = true;
+                    surveyForm.submit();
+                } else {
+                    alert('모든 질문에 답변해주세요.');
+                }
             } else {
-                alert('답변을 선택해주세요.');
+                alert('현재 단계 답변을 선택해주세요.');
             }
         });
 
-        // 단계별 화면 업데이트
         function updateStepDisplay() {
-            // 모든 단계 숨기기
-            questionSteps.forEach(step => {
-                step.classList.remove('active');
-            });
-
-            // 현재 단계만 보이기
+            questionSteps.forEach(step => step.classList.remove('active'));
             const currentQuestionStep = document.querySelector(`[data-step="${currentStep}"]`);
-            if (currentQuestionStep) {
-                currentQuestionStep.classList.add('active');
-            }
+            if (currentQuestionStep) currentQuestionStep.classList.add('active');
 
-            // 버튼 상태 업데이트
             if (prevBtn) prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
             
             if (currentStep === totalSteps) {
@@ -497,14 +566,12 @@ if (isset($_GET['hobby_id'])) {
             }
         }
 
-        // 진행률 업데이트
         function updateProgress() {
             const progress = (currentStep / totalSteps) * 100;
             if (progressFill) progressFill.style.width = progress + '%';
             if (progressText) progressText.textContent = `${currentStep} / ${totalSteps}`;
         }
 
-        // 현재 단계 유효성 검사
         function validateCurrentStep() {
             const currentQuestionStep = document.querySelector(`[data-step="${currentStep}"]`);
             if (!currentQuestionStep) return false;
@@ -518,39 +585,13 @@ if (isset($_GET['hobby_id'])) {
             return checkedRadio !== null;
         }
 
-        // 네비게이션 메뉴 토글
         document.querySelector('.hamburger')?.addEventListener('click', function() {
             document.querySelector('.nav-menu').classList.toggle('active');
         });
 
-        // 모집 공고 로드
         function loadMeetups(hobbyId) {
             window.location.href = `hobby_recommendation.php?hobby_id=${hobbyId}`;
         }
-
-        // 라디오 버튼 선택 시 자동으로 다음 단계로 이동 (마지막 단계 제외)
-        document.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                setTimeout(() => {
-                    if (currentStep < totalSteps && validateCurrentStep()) {
-                        // 약간의 지연 후 자동으로 다음 단계로
-                        setTimeout(() => {
-                            currentStep++;
-                            updateStepDisplay();
-                            updateProgress();
-                        }, 300);
-                    }
-                }, 100);
-            });
-        });
-
-        // 폼 제출 방지 (수동 제출만 허용)
-        surveyForm?.addEventListener('submit', function(e) {
-            if (currentStep !== totalSteps || !validateCurrentStep()) {
-                e.preventDefault();
-                return false;
-            }
-        });
     </script>
 </body>
 </html>
