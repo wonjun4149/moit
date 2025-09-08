@@ -235,46 +235,6 @@ try {
             }
         });
 
-        // --- 새 모임 생성 기능 ---
-        document.getElementById('create-meeting-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const title = document.getElementById('create-title').value;
-            const category = document.getElementById('create-category').value;
-            const description = document.getElementById('create-description').value;
-            const location = document.getElementById('create-location').value;
-            const maxMembers = document.getElementById('create-max-members').value;
-            
-            // 새 카드 HTML (삭제 버튼 추가)
-            const newCardHTML = `
-                <div class="meeting-card" data-category="${category}" data-location="${location}">
-                    <div class="card-image"><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop" alt="${title}"></div>
-                    <div class="card-content">
-                        <div class="card-header">
-                            <span class="card-category">${category}</span>
-                            <span class="card-status recruiting">모집중</span>
-                        </div>
-                        <h3 class="card-title">${title}</h3>
-                        <p class="card-description" style="display:none;">${description}</p>
-                        <div class="card-details">
-                            <span class="detail-item">📍 ${location}</span>
-                            <span class="detail-item">👥 <span class="member-count">1 / ${maxMembers}</span>명</span>
-                        </div>
-                        <div class="card-footer">
-                            <button class="btn-details">상세보기</button>
-                            <button class="btn-delete">삭제하기</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            meetingCardsContainer.insertAdjacentHTML('afterbegin', newCardHTML);
-            checkEmptyState(); // 생성 후 목록 상태 체크
-            
-            e.target.reset();
-            closeModal(createModal);
-        });
-
         // --- 검색 및 필터 기능 ---
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('filter-category');
