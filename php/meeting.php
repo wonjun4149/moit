@@ -17,9 +17,9 @@ try {
     $stmt = $pdo->query("
         SELECT 
             m.id, m.title, m.description, m.category, m.location, 
-            m.max_members, m.image_path, m.created_at,
+            m.max_members, m.image_path, m.created_at, m.organizer_id,
             u.nickname AS organizer_nickname,
-            (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) AS current_members
+            (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) + 1 AS current_members
         FROM meetings m
         JOIN users u ON m.organizer_id = u.id
         ORDER BY m.created_at DESC
@@ -33,7 +33,6 @@ try {
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -56,8 +55,8 @@ try {
             </div>
            <div class="nav-right">
                 <span class="welcome-msg">환영합니다, <?php echo htmlspecialchars($_SESSION['user_nickname']); ?>님!</span>
-                <a href="mypage.php" class="nav-btn">마이페이지</a> <a href="logout.php" class="nav-btn logout-btn">로그아웃</a>
-                <button class="profile-btn"></button>
+                <a href="mypage.php" class="nav-btn">마이페이지</a>
+                <a href="logout.php" class="nav-btn logout-btn">로그아웃</a>
             </div>
         </div>
     </nav>
@@ -69,48 +68,49 @@ try {
                 <p class="section-subtitle">현재 진행 중인 다양한 모임들을 확인해보세요.</p>
 
                 <div class="meeting-cards" id="meeting-cards-container">
-                <?php if (empty($meetings)): ?>
-                    <div id="empty-meetings-message" class="empty-message">
-                        <p>😲 현재 생성된 모임이 없습니다.</p>
-                        <span>오른쪽 '새 모임 만들기' 버튼으로 첫 모임을 만들어보세요!</span>
-                    </div>
-                <?php else: ?>
-                    <?php foreach ($meetings as $meeting): ?>
-                        <div class="meeting-card" 
-                            data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
-                            data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
-                            <div class="card-image">
-                                <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
-                                    alt="<?php echo htmlspecialchars($meeting['title']); ?>">
-                            </div>
-                            <div class="card-content">
-                                <div class="card-header">
-                                    <span class="card-category"><?php echo htmlspecialchars($meeting['category']); ?></span>
-                                    <?php 
-                                        $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
-                                        $status_text = $isRecruiting ? '모집중' : '모집완료';
-                                        $status_class = $isRecruiting ? 'recruiting' : 'completed';
-                                    ?>
-                                    <span class="card-status <?php echo $status_class; ?>">
-                                        <?php echo $status_text; ?>
-                                    </span>
-                                </div>
-                                <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
-                                <p class="card-description" style="display:none;"><?php echo htmlspecialchars($meeting['description']); ?></p>
-                                <div class="card-details">
-                                    <span class="detail-item">📍 <?php echo htmlspecialchars($meeting['location']); ?></span>
-                                    <span class="detail-item">👥 <span class="member-count"><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?></span>명</span>
-                                </div>
-                                <div class="card-footer">
-                                    <button class="btn-details">상세보기</button>
-                                    <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $meeting['organizer_id']): ?>
-                                        <button class="btn-delete">삭제하기</button>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
+                    <?php if (empty($meetings)): ?>
+                        <div id="empty-meetings-message" class="empty-message">
+                            <p>😲 현재 생성된 모임이 없습니다.</p>
+                            <span>오른쪽 '새 모임 만들기' 버튼으로 첫 모임을 만들어보세요!</span>
                         </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+                    <?php else: ?>
+                        <?php foreach ($meetings as $meeting): ?>
+                            <div class="meeting-card" 
+                                 data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
+                                 data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
+                                <div class="card-image">
+                                    <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
+                                         alt="<?php echo htmlspecialchars($meeting['title']); ?>">
+                                </div>
+                                <div class="card-content">
+                                    <div class="card-header">
+                                        <span class="card-category"><?php echo htmlspecialchars($meeting['category']); ?></span>
+                                        <?php 
+                                            $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
+                                            $status_text = $isRecruiting ? '모집중' : '모집완료';
+                                            $status_class = $isRecruiting ? 'recruiting' : 'completed';
+                                        ?>
+                                        <span class="card-status <?php echo $status_class; ?>">
+                                            <?php echo $status_text; ?>
+                                        </span>
+                                    </div>
+                                    <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
+                                    <p class="card-description" style="display:none;"><?php echo htmlspecialchars($meeting['description']); ?></p>
+                                    <div class="card-details">
+                                        <span class="detail-item">📍 <?php echo htmlspecialchars($meeting['location']); ?></span>
+                                        <span class="detail-item">👥 <span class="member-count"><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?></span>명</span>
+                                    </div>
+                                    <div class="card-footer">
+                                        <button class="btn-details">상세보기</button>
+                                        <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $meeting['organizer_id']): ?>
+                                            <button class="btn-delete">삭제하기</button>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
             </div>
 
             <div class="right-section">
@@ -147,31 +147,35 @@ try {
         <div class="modal-content">
             <button class="modal-close-btn">&times;</button>
             <h2>새 모임 만들기</h2>
-            <form id="create-meeting-form">
+            <form id="create-meeting-form" action="create_meeting.php" method="POST" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="create-title">제목</label>
-                    <input type="text" id="create-title" placeholder="예: 주말 아침 함께 테니스 칠 분!" required>
+                    <input type="text" id="create-title" name="title" placeholder="예: 주말 아침 함께 테니스 칠 분!" required>
+                </div>
+                <div class="form-group">
+                    <label for="create-image">대표 사진</label>
+                    <input type="file" id="create-image" name="meeting_image" accept="image/*">
                 </div>
                 <div class="form-group">
                     <label for="create-category">카테고리</label>
-                    <select id="create-category" required>
+                    <select id="create-category" name="category" required>
                         <option value="운동">운동</option>
                         <option value="스터디">스터디</option>
                         <option value="문화">문화</option>
                         <option value="봉사활동">봉사활동</option>
                     </select>
                 </div>
-                 <div class="form-group">
+                <div class="form-group">
                     <label for="create-description">상세 설명</label>
-                    <textarea id="create-description" rows="4" placeholder="모임에 대한 상세한 설명을 적어주세요. (시간, 준비물 등)" required></textarea>
+                    <textarea id="create-description" name="description" rows="4" placeholder="모임에 대한 상세한 설명을 적어주세요." required></textarea>
                 </div>
                 <div class="form-group">
                     <label for="create-location">장소</label>
-                    <input type="text" id="create-location" placeholder="예: 아산시 방축동 실내테니스장" required>
+                    <input type="text" id="create-location" name="location" placeholder="예: 아산시 방축동 실내테니스장" required>
                 </div>
                 <div class="form-group">
                     <label for="create-max-members">최대 인원</label>
-                    <input type="number" id="create-max-members" min="2" placeholder="2명 이상" required>
+                    <input type="number" id="create-max-members" name="max_members" min="2" placeholder="2명 이상" required>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-primary">생성하기</button>
@@ -187,19 +191,10 @@ try {
         });
 
         const createModal = document.getElementById('create-modal');
-        const detailsModal = document.getElementById('details-modal'); // 상세 모달 참조 추가
+        const detailsModal = document.getElementById('details-modal');
         const openCreateModalBtn = document.getElementById('open-create-modal-btn');
         const meetingCardsContainer = document.getElementById('meeting-cards-container');
         const emptyMessage = document.getElementById('empty-meetings-message');
-
-        // --- 모임 목록 상태 관리 ---
-        function checkEmptyState() {
-            if (meetingCardsContainer.querySelector('.meeting-card')) {
-                emptyMessage.style.display = 'none';
-            } else {
-                emptyMessage.style.display = 'block';
-            }
-        }
 
         // --- 모달 관리 ---
         const openModal = (modal) => modal.style.display = 'flex';
@@ -215,22 +210,23 @@ try {
             });
         });
 
-        // --- 상세 보기 및 삭제 기능 (이벤트 위임) ---
+        // --- 상세 보기 및 삭제 기능 ---
         meetingCardsContainer.addEventListener('click', (e) => {
             const card = e.target.closest('.meeting-card');
             if (!card) return;
 
             // 상세 보기 버튼 클릭 시
             if (e.target.classList.contains('btn-details')) {
-                // 상세 보기 로직은 이전과 동일 (생략)
+                // (구현 필요) 상세 보기 모달에 카드 정보 채우기
                 openModal(detailsModal);
             }
 
             // 삭제 버튼 클릭 시
             if (e.target.classList.contains('btn-delete')) {
                 if (confirm('정말로 이 모임을 삭제하시겠습니까?')) {
-                    card.remove();
-                    checkEmptyState(); // 삭제 후 목록 상태 체크
+                    // (구현 필요) DB에서 삭제하는 로직으로 변경해야 합니다.
+                    // 현재는 화면에서만 임시로 사라집니다.
+                    card.remove(); 
                 }
             }
         });
@@ -241,15 +237,30 @@ try {
         const locationFilter = document.getElementById('filter-location');
 
         function applyFilters() {
-            // 필터 로직은 이전과 동일 (생략)
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedCategory = categoryFilter.value;
+            const selectedLocation = locationFilter.value;
+
+            document.querySelectorAll('.meeting-card').forEach(card => {
+                const title = card.querySelector('.card-title').textContent.toLowerCase();
+                const cardCategory = card.dataset.category;
+                const cardLocation = card.dataset.location;
+
+                const searchMatch = title.includes(searchTerm) || cardCategory.toLowerCase().includes(searchTerm) || cardLocation.toLowerCase().includes(searchTerm);
+                const categoryMatch = !selectedCategory || cardCategory === selectedCategory;
+                const locationMatch = !selectedLocation || cardLocation.includes(selectedLocation);
+
+                if (searchMatch && categoryMatch && locationMatch) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         }
 
         searchInput.addEventListener('keyup', applyFilters);
         categoryFilter.addEventListener('change', applyFilters);
         locationFilter.addEventListener('change', applyFilters);
-
-        // 페이지 로드 시 초기 상태 체크
-        checkEmptyState();
 
     </script>
 </body>
