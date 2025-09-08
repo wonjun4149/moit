@@ -103,7 +103,10 @@ try {
                                     <div class="card-footer">
                                         <button class="btn-details">상세보기</button>
                                         <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $meeting['organizer_id']): ?>
-                                            <button class="btn-delete">삭제하기</button>
+                                            <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까?');">
+                                                <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
+                                                <button type="submit" class="btn-delete">삭제하기</button>
+                                            </form>
                                         <?php endif; ?>
                                     </div>
                                 </div>
