@@ -12,42 +12,10 @@ $site_title = "MOIT - 마이페이지";
 // --- 가상 데이터 (나중에 DB에서 가져올 데이터) ---
 
 // 현재 로그인한 사용자가 만든 모임 목록 (예시)
-$created_meetings = [
-    [
-        'id' => 101,
-        'title' => '초보자를 위한 주말 코딩 스터디',
-        'category' => '스터디',
-        'status' => '모집중',
-        'current_members' => 3,
-        'max_members' => 6,
-    ],
-    [
-        'id' => 102,
-        'title' => '아산 신정호 저녁 러닝 크루',
-        'category' => '운동',
-        'status' => '모집완료',
-        'current_members' => 10,
-        'max_members' => 10,
-    ]
-];
+$created_meetings = [];
 
 // 현재 로그인한 사용자가 참여한 모임 목록 (예시)
-$joined_meetings = [
-     [
-        'id' => 1,
-        'title' => '주말 아침 함께 테니스 치실 분!',
-        'category' => '운동',
-        'status' => '모집중',
-        'organizer' => 'tennis_lover'
-    ],
-    [
-        'id' => 4,
-        'title' => '유기견 보호소 미용 봉사 함께해요',
-        'category' => '봉사활동',
-        'status' => '모집중',
-        'organizer' => 'angel1004'
-    ]
-];
+$joined_meetings = [];
 
 ?>
 <!DOCTYPE html>
