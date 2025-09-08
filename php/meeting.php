@@ -9,8 +9,28 @@ if (!isLoggedIn()) {
 
 $site_title = "MOIT - 모임";
 
-// 가상 모임 데이터를 빈 배열로 초기화 (기존 모임 삭제)
-$meetings = [];
+// DB에서 실제 모임 목록을 가져옵니다.
+try {
+    $pdo = getDBConnection();
+    // meetings 테이블과 users 테이블을 JOIN하여 개설자 닉네임도 함께 가져옵니다.
+    // 최신순으로 정렬합니다.
+    $stmt = $pdo->query("
+        SELECT 
+            m.id, m.title, m.description, m.category, m.location, 
+            m.max_members, m.image_path, m.created_at,
+            u.nickname AS organizer_nickname,
+            (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) AS current_members
+        FROM meetings m
+        JOIN users u ON m.organizer_id = u.id
+        ORDER BY m.created_at DESC
+    ");
+    $meetings = $stmt->fetchAll();
+} catch (PDOException $e) {
+    // 데이터베이스 오류 발생 시, 빈 배열로 초기화하고 에러 로그를 남깁니다.
+    $meetings = [];
+    error_log("Meeting list fetch error: " . $e->getMessage());
+    // 실제 서비스에서는 사용자에게 보여줄 에러 페이지로 이동시키는 것이 좋습니다.
+}
 
 ?>
 
@@ -49,16 +69,48 @@ $meetings = [];
                 <p class="section-subtitle">현재 진행 중인 다양한 모임들을 확인해보세요.</p>
 
                 <div class="meeting-cards" id="meeting-cards-container">
-                    <?php if (empty($meetings)): ?>
-                        <div id="empty-meetings-message" class="empty-message">
-                            <p>😲 현재 생성된 모임이 없습니다.</p>
-                            <span>오른쪽 '새 모임 만들기' 버튼으로 첫 모임을 만들어보세요!</span>
-                        </div>
-                    <?php endif; ?>
-
+                <?php if (empty($meetings)): ?>
+                    <div id="empty-meetings-message" class="empty-message">
+                        <p>😲 현재 생성된 모임이 없습니다.</p>
+                        <span>오른쪽 '새 모임 만들기' 버튼으로 첫 모임을 만들어보세요!</span>
+                    </div>
+                <?php else: ?>
                     <?php foreach ($meetings as $meeting): ?>
-                        <?php endforeach; ?>
-                </div>
+                        <div class="meeting-card" 
+                            data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
+                            data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
+                            <div class="card-image">
+                                <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
+                                    alt="<?php echo htmlspecialchars($meeting['title']); ?>">
+                            </div>
+                            <div class="card-content">
+                                <div class="card-header">
+                                    <span class="card-category"><?php echo htmlspecialchars($meeting['category']); ?></span>
+                                    <?php 
+                                        $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
+                                        $status_text = $isRecruiting ? '모집중' : '모집완료';
+                                        $status_class = $isRecruiting ? 'recruiting' : 'completed';
+                                    ?>
+                                    <span class="card-status <?php echo $status_class; ?>">
+                                        <?php echo $status_text; ?>
+                                    </span>
+                                </div>
+                                <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
+                                <p class="card-description" style="display:none;"><?php echo htmlspecialchars($meeting['description']); ?></p>
+                                <div class="card-details">
+                                    <span class="detail-item">📍 <?php echo htmlspecialchars($meeting['location']); ?></span>
+                                    <span class="detail-item">👥 <span class="member-count"><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?></span>명</span>
+                                </div>
+                                <div class="card-footer">
+                                    <button class="btn-details">상세보기</button>
+                                    <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $meeting['organizer_id']): ?>
+                                        <button class="btn-delete">삭제하기</button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
 
             <div class="right-section">
