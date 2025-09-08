@@ -4,7 +4,6 @@ require_once 'config.php';
 $error_message = '';
 $success_message = '';
 
-// 이미 로그인된 사용자는 메인페이지로 리다이렉트
 if (isLoggedIn()) {
     redirect('../index.php');
 }
@@ -34,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         try {
             $pdo = getDBConnection();
             
-            // 중복 검사
+            // 중복 검사: id, nickname, email 중복 확인
             $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ? OR nickname = ? OR email = ?");
             $stmt->execute([$id, $nickname, $email]);
             
@@ -44,14 +43,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // 비밀번호 해시화
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 
-                // 사용자 등록
-                $stmt = $pdo->prepare("INSERT INTO users (id, password, name, nickname, email) VALUES (?, ?, ?, ?, ?)");
+                // 사용자 등록: 모든 필드 사용
+                $stmt = $pdo->prepare("INSERT INTO users (id, password_hash, name, nickname, email) VALUES (?, ?, ?, ?, ?)");
                 $stmt->execute([$id, $hashed_password, $name, $nickname, $email]);
                 
                 $success_message = '회원가입이 완료되었습니다. 로그인해주세요.';
             }
         } catch (PDOException $e) {
-            $error_message = '회원가입 중 오류가 발생했습니다.';
+            $error_message = '회원가입 중 오류가 발생했습니다: ' . $e->getMessage();
         }
     }
 }
@@ -131,14 +130,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
             <?php endif; ?>
         </div>
-
         <div class="background-decoration">
             <div class="decoration-circle circle-1"></div>
             <div class="decoration-circle circle-2"></div>
             <div class="decoration-circle circle-3"></div>
         </div>
     </div>
-
     <script>
         // 실시간 유효성 검사
         document.getElementById('id').addEventListener('input', function(e) {
@@ -152,7 +149,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             const isValid = value.length >= 6;
             e.target.style.borderColor = isValid ? '#4CAF50' : '#f44336';
             
-            // 비밀번호 확인 필드도 체크
             const confirmField = document.getElementById('confirm_password');
             if (confirmField.value) {
                 confirmField.style.borderColor = value === confirmField.value ? '#4CAF50' : '#f44336';

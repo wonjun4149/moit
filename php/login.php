@@ -4,14 +4,8 @@ require_once 'config.php';
 $error_message = '';
 $success_message = '';
 
-// 이미 로그인된 사용자는 메인페이지로 리다이렉트
 if (isLoggedIn()) {
     redirect('../index.php');
-}
-
-// 회원가입 완료 메시지 처리
-if (isset($_GET['registered']) && $_GET['registered'] == '1') {
-    $success_message = '회원가입이 완료되었습니다. 로그인해주세요.';
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -24,28 +18,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         try {
             $pdo = getDBConnection();
             
-            // 사용자 정보 조회
-            $stmt = $pdo->prepare("SELECT id, password, name, nickname FROM users WHERE id = ?");
+            // 사용자 정보 조회: id 열을 기준으로 조회
+            $stmt = $pdo->prepare("SELECT id, name, nickname, password_hash FROM users WHERE id = ?");
             $stmt->execute([$id]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            $user = $stmt->fetch();
             
-            if ($user && password_verify($password, $user['password'])) {
+            if ($user && password_verify($password, $user['password_hash'])) {
                 // 로그인 성공
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_nickname'] = $user['nickname'];
-                
-                // 로그인 시간 업데이트
-                $update_stmt = $pdo->prepare("UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-                $update_stmt->execute([$user['id']]);
-                
-                // 메인페이지로 리다이렉트
+
                 redirect('../index.php');
             } else {
                 $error_message = '아이디 또는 비밀번호가 올바르지 않습니다.';
             }
         } catch (PDOException $e) {
-            $error_message = '로그인 중 오류가 발생했습니다.';
+            $error_message = '로그인 중 오류가 발생했습니다: ' . $e->getMessage();
         }
     }
 }
@@ -73,13 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
             <?php endif; ?>
-
-            <?php if ($success_message): ?>
-                <div class="alert alert-success">
-                    <?php echo htmlspecialchars($success_message); ?>
-                </div>
-            <?php endif; ?>
-
+            
             <form method="POST" class="auth-form">
                 <div class="form-group">
                     <label for="id">아이디</label>
@@ -103,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 <button type="submit" class="submit-btn">로그인</button>
             </form>
-
+            
             <div class="divider">
                 <span>또는</span>
             </div>
@@ -122,16 +105,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <p><a href="../index.php">홈으로 돌아가기</a></p>
             </div>
         </div>
-
         <div class="background-decoration">
             <div class="decoration-circle circle-1"></div>
             <div class="decoration-circle circle-2"></div>
             <div class="decoration-circle circle-3"></div>
         </div>
     </div>
-
     <script>
-        // 입력 필드 포커스 효과
+        // 스크립트는 기존과 동일하게 유지
         document.querySelectorAll('.form-group input').forEach(input => {
             input.addEventListener('focus', function() {
                 this.parentElement.classList.add('focused');
@@ -144,14 +125,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             });
         });
 
-        // 폼 제출 시 로딩 효과
         document.querySelector('.auth-form').addEventListener('submit', function() {
             const submitBtn = document.querySelector('.submit-btn');
             submitBtn.textContent = '로그인 중...';
             submitBtn.disabled = true;
         });
 
-        // 엔터키로 로그인
         document.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 document.querySelector('.auth-form').submit();

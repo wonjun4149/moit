@@ -276,13 +276,12 @@ debug_output("최종 상태", [
                 <ul class="nav-menu">
                     <li><a href="introduction.php">소개</a></li>
                     <li><a href="hobby_recommendation.php" class="active">취미 추천</a></li>
-                    <li><a href="#meeting">모임</a></li>
-                    <li><a href="#community">커뮤니티</a></li>
+                    <li><a href="meeting.php">모임</a></li>
                 </ul>
             </div>
             <div class="nav-right">
                 <span class="welcome-msg">환영합니다, <?php echo htmlspecialchars($_SESSION['user_nickname']); ?>님!</span>
-                <a href="logout.php" class="nav-btn logout-btn">로그아웃</a>
+                <a href="mypage.php" class="nav-btn">마이페이지</a> <a href="logout.php" class="nav-btn logout-btn">로그아웃</a>
                 <button class="profile-btn"></button>
             </div>
         </div>
