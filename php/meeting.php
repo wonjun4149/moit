@@ -213,27 +213,6 @@ try {
             });
         });
 
-        // --- 상세 보기 및 삭제 기능 ---
-        meetingCardsContainer.addEventListener('click', (e) => {
-            const card = e.target.closest('.meeting-card');
-            if (!card) return;
-
-            // 상세 보기 버튼 클릭 시
-            if (e.target.classList.contains('btn-details')) {
-                // (구현 필요) 상세 보기 모달에 카드 정보 채우기
-                openModal(detailsModal);
-            }
-
-            // 삭제 버튼 클릭 시
-            if (e.target.classList.contains('btn-delete')) {
-                if (confirm('정말로 이 모임을 삭제하시겠습니까?')) {
-                    // (구현 필요) DB에서 삭제하는 로직으로 변경해야 합니다.
-                    // 현재는 화면에서만 임시로 사라집니다.
-                    card.remove(); 
-                }
-            }
-        });
-
         // --- 검색 및 필터 기능 ---
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('filter-category');
