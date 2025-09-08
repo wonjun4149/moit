@@ -75,12 +75,36 @@ try {
                         </div>
                     <?php else: ?>
                         <?php foreach ($meetings as $meeting): ?>
-                            <div class="meeting-card" 
-                                 data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
-                                 data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
-                                <div class="card-image">
-                                    <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
-                                         alt="<?php echo htmlspecialchars($meeting['title']); ?>">
+                            <?php
+                                // 설명을 80자로 자르는 로직
+                                $description_full = htmlspecialchars($meeting['description']);
+                                $description_short = $description_full;
+                                if (mb_strlen($description_short) > 80) {
+                                        $description_short = mb_substr($description_short, 0, 80) . '...';
+                                }
+                            ?>
+                                <div class="meeting-card" 
+                                    data-id="<?php echo $meeting['id']; ?>"
+                                    data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
+                                    data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
+                                    
+                                    <div class="card-image">
+                                        </div>
+
+                                    <div class="card-content">
+                                        <div class="card-header">
+                                            </div>
+                                        <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
+                                        <p class="card-description-short"><?php echo $description_short; ?></p>
+                                        <p class="card-description-full" style="display:none;"><?php echo $description_full; ?></p>
+                                        
+                                        <span class="organizer-nickname-hidden" style="display:none;"><?php echo htmlspecialchars($meeting['organizer_nickname']); ?></span>
+
+                                        <div class="card-details">
+                                            </div>
+                                        <div class="card-footer">
+                                            </div>
+                                    </div>
                                 </div>
                                 <div class="card-content">
                                     <div class="card-header">
@@ -144,8 +168,33 @@ try {
     </main>
 
     <div id="details-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <img id="modal-details-img" src="" alt="모임 이미지" class="modal-img">
+            <div class="modal-header">
+                <h2 id="modal-details-title"></h2>
+                <div>
+                    <span id="modal-details-category" class="card-category"></span>
+                    <span id="modal-details-status" class="card-status"></span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <p id="modal-details-description"></p>
+                <div class="modal-details-info">
+                    <span>📍 **장소:** <strong id="modal-details-location"></strong></span>
+                    <span>👥 **인원:** <strong id="modal-details-members"></strong></span>
+                    <span>👤 **개설자:** <strong id="modal-details-organizer"></strong></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <form action="join_meeting.php" method="POST">
+                    <input type="hidden" name="meeting_id" id="modal-join-meeting-id" value="">
+                    <button type="submit" class="btn-primary">신청하기</button>
+                </form>
+            </div>
         </div>
-
+    </div>
+    
     <div id="create-modal" class="modal-backdrop" style="display: none;">
         <div class="modal-content">
             <button class="modal-close-btn">&times;</button>
@@ -193,18 +242,20 @@ try {
             document.querySelector('.nav-menu').classList.toggle('active');
         });
 
+        // --- 필요한 DOM 요소들 선택 ---
         const createModal = document.getElementById('create-modal');
         const detailsModal = document.getElementById('details-modal');
         const openCreateModalBtn = document.getElementById('open-create-modal-btn');
         const meetingCardsContainer = document.getElementById('meeting-cards-container');
-        const emptyMessage = document.getElementById('empty-meetings-message');
-
-        // --- 모달 관리 ---
+        
+        // --- 모달 관리 함수 ---
         const openModal = (modal) => modal.style.display = 'flex';
         const closeModal = (modal) => modal.style.display = 'none';
 
+        // '새 모임 만들기' 버튼 클릭 시 모달 열기
         openCreateModalBtn.addEventListener('click', () => openModal(createModal));
 
+        // 모달의 닫기 버튼 또는 배경 클릭 시 모달 닫기
         document.querySelectorAll('.modal-backdrop').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target.classList.contains('modal-backdrop') || e.target.classList.contains('modal-close-btn')) {
@@ -213,7 +264,45 @@ try {
             });
         });
 
-        // --- 검색 및 필터 기능 ---
+        // --- 상세보기 기능 ---
+        meetingCardsContainer.addEventListener('click', (e) => {
+            // '상세보기' 버튼이 아니면 아무것도 하지 않음
+            if (!e.target.classList.contains('btn-details')) {
+                return;
+            }
+
+            const card = e.target.closest('.meeting-card');
+            
+            // 카드에서 정보 추출
+            const id = card.dataset.id;
+            const title = card.querySelector('.card-title').textContent;
+            const description = card.querySelector('.card-description-full').textContent; // 전체 설명
+            const category = card.querySelector('.card-category').textContent;
+            const status = card.querySelector('.card-status').textContent.trim();
+            const statusClass = card.querySelector('.card-status').className;
+            const location = card.dataset.location;
+            const members = card.querySelector('.member-count').textContent.trim();
+            const organizer = card.querySelector('.organizer-nickname-hidden')?.textContent || '정보 없음';
+            const imgSrc = card.querySelector('.card-image img').src;
+
+            // 모달에 정보 채우기
+            document.getElementById('modal-details-title').textContent = title;
+            document.getElementById('modal-details-description').textContent = description;
+            document.getElementById('modal-details-category').textContent = category;
+            document.getElementById('modal-details-status').textContent = status;
+            document.getElementById('modal-details-status').className = 'card-status ' + statusClass.split(' ')[1];
+            document.getElementById('modal-details-location').textContent = location;
+            document.getElementById('modal-details-members').textContent = members + '명';
+            document.getElementById('modal-details-organizer').textContent = organizer;
+            document.getElementById('modal-details-img').src = imgSrc;
+            document.getElementById('modal-join-meeting-id').value = id;
+            
+            // 상세보기 모달 열기
+            openModal(detailsModal);
+        });
+
+
+        // --- 검색 및 필터 기능 (이전과 동일) ---
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('filter-category');
         const locationFilter = document.getElementById('filter-location');
