@@ -92,12 +92,8 @@ $joined_meetings = [];
         </div>
     </main>
 
+    <script src="/js/navbar.js"></script>
     <script>
-        // 네비게이션 메뉴 토글
-        document.querySelector('.hamburger').addEventListener('click', function() {
-            document.querySelector('.nav-menu').classList.toggle('active');
-        });
-
         // 탭 기능
         const tabBtns = document.querySelectorAll('.tab-btn');
         const tabPanes = document.querySelectorAll('.tab-pane');

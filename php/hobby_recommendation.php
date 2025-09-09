@@ -471,6 +471,7 @@ debug_output("최종 상태", [
         </div>
     </main>
 
+    <script src="/js/navbar.js"></script>
     <script>
         // 설문조사 단계 관리 JavaScript (동일)
         let currentStep = 1;
@@ -562,10 +563,6 @@ debug_output("최종 상태", [
             const checkedRadio = currentQuestionStep.querySelector(`input[name="${radioName}"]:checked`);
             return checkedRadio !== null;
         }
-
-        document.querySelector('.hamburger')?.addEventListener('click', function() {
-            document.querySelector('.nav-menu').classList.toggle('active');
-        });
 
         function loadMeetups(hobbyId) {
             window.location.href = `hobby_recommendation.php?hobby_id=${hobbyId}`;

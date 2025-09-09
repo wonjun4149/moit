@@ -208,12 +208,8 @@ try {
         </div>
     </div>
 
+    <script src="/js/navbar.js"></script>
     <script>
-        // --- 네비게이션 메뉴 토글 ---
-        document.querySelector('.hamburger').addEventListener('click', () => {
-            document.querySelector('.nav-menu').classList.toggle('active');
-        });
-
         // --- 필요한 DOM 요소들 선택 ---
         const createModal = document.getElementById('create-modal');
         const detailsModal = document.getElementById('details-modal');

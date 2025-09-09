@@ -53,23 +53,6 @@ if (isset($_GET['logout']) && $_GET['logout'] == '1') {
         </div>
     </main>
 
-
-
-    <script>
-        // 간단한 인터랙션
-        document.querySelector('.hamburger').addEventListener('click', function() {
-            document.querySelector('.nav-menu').classList.toggle('active');
-        });
-
-        // 스크롤 효과
-        window.addEventListener('scroll', function() {
-            const navbar = document.querySelector('.navbar');
-            if (window.scrollY > 50) {
-                navbar.style.background = 'rgba(0, 0, 0, 0.95)';
-            } else {
-                navbar.style.background = 'rgba(0, 0, 0, 0.9)';
-            }
-        });
-    </script>
+    <script src="/js/navbar.js"></script>
 </body>
 </html>
