@@ -619,33 +619,34 @@ body {
 }
 
 /* ====================================================== */
-/* ## 네비게이션 바 스타일 (다른 페이지와 동일하게 맞춤) ## */
+/* ## 네비게이션 바 스타일 (기존 디자인 통일) ## */
 /* ====================================================== */
 
 .navbar {
-    background-color: #fff;
-    padding: 10px 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 100;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px 0;
+    z-index: 1000;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 20px;
     width: 100%;
-    max-width: 1200px;
 }
 
 .nav-left, .nav-right {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
 }
 
 .logo a {
@@ -653,20 +654,11 @@ body {
     font-size: 1.8em;
     color: #3498db;
     text-decoration: none;
+    margin-right: 25px;
 }
 
 .hamburger {
     display: none; /* 화면이 작을 때만 표시됨 */
-    flex-direction: column;
-    cursor: pointer;
-    gap: 5px;
-}
-
-.hamburger span {
-    display: block;
-    width: 25px;
-    height: 3px;
-    background-color: #333;
 }
 
 .nav-menu {
@@ -684,17 +676,17 @@ body {
     font-size: 1.1em;
     padding: 5px 0;
     transition: color 0.3s ease;
-    border-bottom: 2px solid transparent; /* 기본 밑줄은 투명 */
+    border-bottom: 2px solid transparent;
 }
 
 .nav-menu li a:hover,
 .nav-menu li a.active {
     color: #3498db;
-    border-bottom: 2px solid #3498db; /* 활성화 및 호버 시 밑줄 표시 */
+    border-bottom-color: #3498db;
 }
 
 .welcome-msg {
-    color: #7f8c8d;
+    color: #555;
     font-size: 0.95em;
 }
 
@@ -706,6 +698,7 @@ body {
     border-radius: 5px;
     border: 1px solid #ddd;
     transition: all 0.3s ease;
+    white-space: nowrap;
 }
 
 .nav-btn:hover {
@@ -724,5 +717,5 @@ body {
 }
 
 .profile-btn {
-    display: none; /* 현재 사용하지 않으므로 숨김 */
+    display: none;
 }
