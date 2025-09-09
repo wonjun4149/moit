@@ -19,38 +19,11 @@ if (isset($_GET['logout']) && $_GET['logout'] == '1') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $site_title; ?></title>
+    <link rel="stylesheet" href="css/navbar-style.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- 상단 네비게이션 -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-left">
-                <div class="hamburger">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-                <div class="logo"><?php echo $site_title; ?></div>
-                <ul class="nav-menu">
-                    <li><a href="php/introduction.php">소개</a></li>
-                    <li><a href="php/hobby_recommendation.php">취미 추천</a></li>
-                    <li><a href="php/meeting.php">모임</a></li>
-                </ul>
-            </div>
-            <div class="nav-right">
-                <?php if (isLoggedIn()): ?>
-                    <span class="welcome-msg">환영합니다, <?php echo htmlspecialchars($_SESSION['user_nickname']); ?>님!</span>
-                    <a href="php/mypage.php" class="nav-btn">마이페이지</a> <a href="php/logout.php" class="nav-btn logout-btn">로그아웃</a>
-                    <button class="profile-btn"></button>
-                <?php else: ?>
-                    <a href="php/login.php" class="nav-btn">로그인</a>
-                    <a href="php/register.php" class="nav-btn">회원가입</a>
-                    <button class="profile-btn"></button>
-                <?php endif; ?>
-            </div>
-        </div>
-    </nav>
+    <?php require_once 'php/navbar.php'; ?>
 
     <!-- 메인 컨테이너 -->
     <main class="main-container">
