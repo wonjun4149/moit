@@ -19,7 +19,7 @@ try {
             m.id, m.title, m.description, m.category, m.location, 
             m.max_members, m.image_path, m.created_at, m.organizer_id,
             u.nickname AS organizer_nickname,
-            (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) + 1 AS current_members
+            (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) AS current_members_count
         FROM meetings m
         JOIN users u ON m.organizer_id = u.id
         ORDER BY m.created_at DESC
@@ -40,6 +40,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $site_title; ?></title>
     <link rel="stylesheet" href="../css/meeting-style.css"> 
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <nav class="navbar">
@@ -80,50 +81,38 @@ try {
                                 $description_full = htmlspecialchars($meeting['description']);
                                 $description_short = $description_full;
                                 if (mb_strlen($description_short) > 80) {
-                                        $description_short = mb_substr($description_short, 0, 80) . '...';
+                                    $description_short = mb_substr($description_short, 0, 80) . '...';
                                 }
+                                $current_members = $meeting['current_members_count'] + 1; // 개설자 포함
+                                $isRecruiting = $current_members <= $meeting['max_members'];
+                                $status_text = $isRecruiting ? '모집중' : '모집완료';
+                                $status_class = $isRecruiting ? 'recruiting' : 'completed';
                             ?>
-                                <div class="meeting-card" 
-                                    data-id="<?php echo $meeting['id']; ?>"
-                                    data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
-                                    data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
-                                    
-                                    <div class="card-image">
-                                        </div>
-
-                                    <div class="card-content">
-                                        <div class="card-header">
-                                            </div>
-                                        <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
-                                        <p class="card-description-short"><?php echo $description_short; ?></p>
-                                        <p class="card-description-full" style="display:none;"><?php echo $description_full; ?></p>
-                                        
-                                        <span class="organizer-nickname-hidden" style="display:none;"><?php echo htmlspecialchars($meeting['organizer_nickname']); ?></span>
-
-                                        <div class="card-details">
-                                            </div>
-                                        <div class="card-footer">
-                                            </div>
-                                    </div>
+                            <div class="meeting-card" 
+                                 data-id="<?php echo $meeting['id']; ?>"
+                                 data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
+                                 data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
+                                <div class="card-image">
+                                    <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
+                                         alt="<?php echo htmlspecialchars($meeting['title']); ?>">
                                 </div>
                                 <div class="card-content">
                                     <div class="card-header">
                                         <span class="card-category"><?php echo htmlspecialchars($meeting['category']); ?></span>
-                                        <?php 
-                                            $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
-                                            $status_text = $isRecruiting ? '모집중' : '모집완료';
-                                            $status_class = $isRecruiting ? 'recruiting' : 'completed';
-                                        ?>
                                         <span class="card-status <?php echo $status_class; ?>">
                                             <?php echo $status_text; ?>
                                         </span>
                                     </div>
                                     <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
-                                    <p class="card-description" style="display:none;"><?php echo htmlspecialchars($meeting['description']); ?></p>
+                                    <p class="card-description-short"><?php echo $description_short; ?></p>
+                                    <p class="card-description-full" style="display:none;"><?php echo $description_full; ?></p>
+                                    
+                                    <span class="organizer-nickname-hidden" style="display:none;"><?php echo htmlspecialchars($meeting['organizer_nickname']); ?></span>
+
                                     <div class="card-details">
                                         <span class="detail-item">📍 <?php echo htmlspecialchars($meeting['location']); ?></span>
-                                        <span class="detail-item">👥 <span class="member-count"><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?></span>명</span>
-                                    </div>
+                                        <span class="detail-item">👥 <span class="member-count"><?php echo $current_members; ?> / <?php echo $meeting['max_members']; ?></span>명</span>
+                                        </div>
                                     <div class="card-footer">
                                         <button class="btn-details">상세보기</button>
                                         <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $meeting['organizer_id']): ?>
@@ -194,7 +183,7 @@ try {
             </div>
         </div>
     </div>
-    
+
     <div id="create-modal" class="modal-backdrop" style="display: none;">
         <div class="modal-content">
             <button class="modal-close-btn">&times;</button>
@@ -290,9 +279,9 @@ try {
             document.getElementById('modal-details-description').textContent = description;
             document.getElementById('modal-details-category').textContent = category;
             document.getElementById('modal-details-status').textContent = status;
-            document.getElementById('modal-details-status').className = 'card-status ' + statusClass.split(' ')[1];
+            document.getElementById('modal-details-status').className = 'card-status ' + statusClass.split(' ')[1]; // class 재설정
             document.getElementById('modal-details-location').textContent = location;
-            document.getElementById('modal-details-members').textContent = members + '명';
+            document.getElementById('modal-details-members').textContent = members; // '명'은 HTML에 이미 있으므로 제외
             document.getElementById('modal-details-organizer').textContent = organizer;
             document.getElementById('modal-details-img').src = imgSrc;
             document.getElementById('modal-join-meeting-id').value = id;
