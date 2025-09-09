@@ -601,3 +601,19 @@ body {
     }
 }
 */
+
+/* 1. 모임 목록 카드에서 긴 내용 자동 줄바꿈 처리
+  (단어가 길어도 카드 영역을 벗어나지 않도록 강제 줄바꿈)
+*/
+.card-description-short {
+    word-wrap: break-word;
+    word-break: break-all;
+}
+
+/* 2. 상세보기 팝업(모달)에서 긴 내용 자동 줄바꿈 처리
+  (팝업창 크기에 맞춰 텍스트가 아래로 이어지도록 강제 줄바꿈)
+*/
+#modal-details-description {
+    word-wrap: break-word;
+    word-break: break-all;
+}
