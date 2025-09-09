@@ -58,6 +58,7 @@ try {
                 <span class="welcome-msg">환영합니다, <?php echo htmlspecialchars($_SESSION['user_nickname']); ?>님!</span>
                 <a href="mypage.php" class="nav-btn">마이페이지</a>
                 <a href="logout.php" class="nav-btn logout-btn">로그아웃</a>
+                <button class="profile-btn"></button>
             </div>
         </div>
     </nav>
