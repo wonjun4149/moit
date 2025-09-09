@@ -458,9 +458,6 @@ body {
     }
 }
 
-/* Navbar styles (assuming they are in style.css or similar) */
-/* If these are in meeting-style.css, uncomment and review */
-/*
 .navbar {
     background-color: #fff;
     padding: 10px 20px;
@@ -597,10 +594,9 @@ body {
         margin-top: 10px;
     }
     .welcome-msg {
-        display: none; // Hide for small screens if too cramped
+        display: none;
     }
 }
-*/
 
 /* 1. 모임 목록 카드에서 긴 내용 자동 줄바꿈 처리
   (단어가 길어도 카드 영역을 벗어나지 않도록 강제 줄바꿈)
@@ -616,106 +612,4 @@ body {
 #modal-details-description {
     word-wrap: break-word;
     word-break: break-all;
-}
-
-/* ====================================================== */
-/* ## 네비게이션 바 스타일 (기존 디자인 통일) ## */
-/* ====================================================== */
-
-.navbar {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 15px 0;
-    z-index: 1000;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 20px;
-    width: 100%;
-}
-
-.nav-left, .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.logo a {
-    font-weight: bold;
-    font-size: 1.8em;
-    color: #3498db;
-    text-decoration: none;
-    margin-right: 25px;
-}
-
-.hamburger {
-    display: none; /* 화면이 작을 때만 표시됨 */
-}
-
-.nav-menu {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    gap: 25px;
-}
-
-.nav-menu li a {
-    text-decoration: none;
-    color: #555;
-    font-weight: 500;
-    font-size: 1.1em;
-    padding: 5px 0;
-    transition: color 0.3s ease;
-    border-bottom: 2px solid transparent;
-}
-
-.nav-menu li a:hover,
-.nav-menu li a.active {
-    color: #3498db;
-    border-bottom-color: #3498db;
-}
-
-.welcome-msg {
-    color: #555;
-    font-size: 0.95em;
-}
-
-.nav-btn {
-    text-decoration: none;
-    color: #555;
-    background-color: transparent;
-    padding: 8px 15px;
-    border-radius: 5px;
-    border: 1px solid #ddd;
-    transition: all 0.3s ease;
-    white-space: nowrap;
-}
-
-.nav-btn:hover {
-    background-color: #f5f5f5;
-    border-color: #ccc;
-}
-
-.logout-btn {
-    border-color: #e74c3c;
-    color: #e74c3c;
-}
-
-.logout-btn:hover {
-    background-color: #e74c3c;
-    color: white;
-}
-
-.profile-btn {
-    display: none;
 }
