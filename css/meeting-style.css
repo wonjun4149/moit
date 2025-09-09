@@ -1,4 +1,8 @@
 /* General Body and Main Container */
+html {
+  overflow-y: scroll;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
     margin: 0;
