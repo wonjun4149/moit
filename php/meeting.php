@@ -53,9 +53,9 @@ try {
                 </div>
                 <div class="logo"><a href="../index.php">MOIT</a></div>
                 <ul class="nav-menu">
-                    <li><a href="introduction.php" class="active">소개</a></li>
+                    <li><a href="introduction.php">소개</a></li>
                     <li><a href="hobby_recommendation.php">취미 추천</a></li>
-                    <li><a href="meeting.php">모임</a></li>
+                    <li><a href="meeting.php" class="active">모임</a></li>
                 </ul>
             </div>
             <div class="nav-right">
