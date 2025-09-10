@@ -119,7 +119,7 @@ try {
                     <h3>모임 검색</h3>
                     <div class="search-input-wrapper">
                         <input type="text" id="search-input" placeholder="제목, 카테고리, 지역으로 검색">
-                        <button id="search-button">검색</button>
+                        <button id="search-button">🔍</button>
                     </div>
                 </div>
 
