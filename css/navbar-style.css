@@ -73,6 +73,7 @@
     transition: all 0.3s ease;
     position: relative;
     padding: 5px 0;
+    line-height: normal; /* body 스타일 상속 방지 */
 }
 
 .nav-menu a:hover,
