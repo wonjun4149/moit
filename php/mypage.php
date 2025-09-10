@@ -9,13 +9,46 @@ if (!isLoggedIn()) {
 
 $site_title = "MOIT - 마이페이지";
 
-// --- 가상 데이터 (나중에 DB에서 가져올 데이터) ---
-
-// 현재 로그인한 사용자가 만든 모임 목록 (예시)
+// DB에서 사용자의 모임 정보를 가져옵니다.
 $created_meetings = [];
-
-// 현재 로그인한 사용자가 참여한 모임 목록 (예시)
 $joined_meetings = [];
+$user_id = $_SESSION['user_id'];
+
+try {
+    $pdo = getDBConnection();
+
+    // 1. 내가 만든 모임 목록 조회
+    $stmt_created = $pdo->prepare("
+        SELECT 
+            m.id, m.title, m.category, m.max_members,
+            (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) + 1 AS current_members
+        FROM meetings m
+        WHERE m.organizer_id = ?
+        ORDER BY m.created_at DESC
+    ");
+    $stmt_created->execute([$user_id]);
+    $created_meetings = $stmt_created->fetchAll();
+
+    // 2. 내가 참여한 모임 목록 조회
+    $stmt_joined = $pdo->prepare("
+        SELECT 
+            m.id, m.title, m.category, m.max_members,
+            u.nickname AS organizer_nickname,
+            (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) + 1 AS current_members
+        FROM meetings m
+        JOIN users u ON m.organizer_id = u.id
+        JOIN meeting_participants mp ON m.id = mp.meeting_id
+        WHERE mp.user_id = ?
+        ORDER BY m.created_at DESC
+    ");
+    $stmt_joined->execute([$user_id]);
+    $joined_meetings = $stmt_joined->fetchAll();
+
+} catch (PDOException $e) {
+    // 데이터베이스 오류 처리
+    error_log("Mypage data fetch error: " . $e->getMessage());
+    // 사용자에게는 오류 메시지를 보여주지 않고, 빈 목록으로 표시됩니다.
+}
 
 ?>
 <!DOCTYPE html>
@@ -53,6 +86,11 @@ $joined_meetings = [];
                     <?php else: ?>
                         <ul class="meeting-list">
                             <?php foreach ($created_meetings as $meeting): ?>
+                                <?php
+                                    $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
+                                    $status_text = $isRecruiting ? '모집중' : '모집완료';
+                                    $status_class = $isRecruiting ? 'recruiting' : 'completed';
+                                ?>
                                 <li>
                                     <div class="meeting-info">
                                         <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
@@ -60,7 +98,7 @@ $joined_meetings = [];
                                     </div>
                                     <div class="meeting-status">
                                         <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
-                                        <span class="status-tag <?php echo ($meeting['status'] === '모집중') ? 'recruiting' : 'completed'; ?>"><?php echo htmlspecialchars($meeting['status']); ?></span>
+                                        <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
@@ -74,14 +112,20 @@ $joined_meetings = [];
                     <?php else: ?>
                         <ul class="meeting-list">
                             <?php foreach ($joined_meetings as $meeting): ?>
+                                <?php
+                                    $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
+                                    $status_text = $isRecruiting ? '모집중' : '모집완료';
+                                    $status_class = $isRecruiting ? 'recruiting' : 'completed';
+                                ?>
                                 <li>
                                     <div class="meeting-info">
                                         <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
                                         <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
-                                        <span class="organizer"> (개설자: <?php echo htmlspecialchars($meeting['organizer']); ?>)</span>
+                                        <span class="organizer"> (개설자: <?php echo htmlspecialchars($meeting['organizer_nickname']); ?>)</span>
                                     </div>
                                     <div class="meeting-status">
-                                        <span class="status-tag <?php echo ($meeting['status'] === '모집중') ? 'recruiting' : 'completed'; ?>"><?php echo htmlspecialchars($meeting['status']); ?></span>
+                                        <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                                        <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
