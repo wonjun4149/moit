@@ -153,9 +153,9 @@ try {
             <div class="modal-body">
                 <p id="modal-details-description"></p>
                 <div class="modal-details-info">
-                    <span>📍 **장소:** <strong id="modal-details-location"></strong></span>
-                    <span>👥 **인원:** <strong id="modal-details-members"></strong></span>
-                    <span>👤 **개설자:** <strong id="modal-details-organizer"></strong></span>
+                    <span>📍 장소: <strong id="modal-details-location"></strong></span>
+                    <span>👥 인원: <strong id="modal-details-members"></strong></span>
+                    <span>👤 개설자: <strong id="modal-details-organizer"></strong></span>
                 </div>
             </div>
             <div class="modal-footer">
