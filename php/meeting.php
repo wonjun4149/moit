@@ -117,7 +117,10 @@ try {
                 
                 <div class="search-box">
                     <h3>모임 검색</h3>
-                    <input type="text" id="search-input" placeholder="제목, 카테고리, 지역으로 검색">
+                    <div class="search-input-wrapper">
+                        <input type="text" id="search-input" placeholder="제목, 카테고리, 지역으로 검색">
+                        <button id="search-button">검색</button>
+                    </div>
                 </div>
 
                 <div class="filter-box">
@@ -275,6 +278,8 @@ try {
         const categoryFilter = document.getElementById('filter-category');
         const locationFilter = document.getElementById('filter-location');
 
+        const searchButton = document.getElementById('search-button');
+
         function applyFilters() {
             const searchTerm = searchInput.value.toLowerCase();
             const selectedCategory = categoryFilter.value;
@@ -297,7 +302,7 @@ try {
             });
         }
 
-        searchInput.addEventListener('keyup', applyFilters);
+        searchButton.addEventListener('click', applyFilters);
         categoryFilter.addEventListener('change', applyFilters);
         locationFilter.addEventListener('change', applyFilters);
 
