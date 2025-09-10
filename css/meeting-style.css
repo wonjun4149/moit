@@ -1,3 +1,9 @@
+/* ===== 네비게이션 바 스타일 강제 리셋 ===== */
+.navbar, .navbar * {
+    line-height: 1.2 !important;
+}
+/* ======================================== */
+
 /* General Body and Main Container */
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
