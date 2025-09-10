@@ -19,6 +19,7 @@
     align-items: center;
     padding: 0 20px;
     width: 100%;
+    line-height: 1.2; /* 자식 요소의 line-height 상속 문제 해결 */
 }
 
 .nav-left {
