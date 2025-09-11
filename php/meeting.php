@@ -115,23 +115,25 @@ try {
             <div class="right-section">
                 <button class="btn-create-meeting" id="open-create-modal-btn">새 모임 만들기</button>
                 
-                <div class="search-input-wrapper">
-                    <input type="text" id="search-input" placeholder="제목, 카테고리로 검색">
-                    <button id="search-button">🔍</button>
+                <div class="search-box">
+                    <h3>모임 검색</h3>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="search-input" placeholder="제목, 카테고리로 검색">
+                        <button id="search-button">🔍</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="filter-box">
-                <h3>필터</h3>
-                <select id="filter-category">
-                    <option value="">카테고리 전체</option>
-                    <option value="운동">운동</option>
-                    <option value="스터디">스터디</option>
-                    <option value="문화">문화</option>
-                    <option value="봉사활동">봉사활동</option>
-                </select>
-                <input type="text" id="filter-location" placeholder="지역으로 검색">
-            </div>
+                <div class="filter-box">
+                    <h3>필터</h3>
+                    <select id="filter-category">
+                        <option value="">카테고리 전체</option>
+                        <option value="운동">운동</option>
+                        <option value="스터디">스터디</option>
+                        <option value="문화">문화</option>
+                        <option value="봉사활동">봉사활동</option>
+                    </select>
+                    <input type="text" id="filter-location" placeholder="지역으로 검색">
+                </div>
             </div>
         </div>
     </main>
