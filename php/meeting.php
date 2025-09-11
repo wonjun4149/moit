@@ -115,29 +115,23 @@ try {
             <div class="right-section">
                 <button class="btn-create-meeting" id="open-create-modal-btn">새 모임 만들기</button>
                 
-                <div class="search-box">
-                    <h3>모임 검색</h3>
-                    <div class="search-input-wrapper">
-                        <input type="text" id="search-input" placeholder="제목, 카테고리, 지역으로 검색">
-                        <button id="search-button">🔍</button>
-                    </div>
+                <div class="search-input-wrapper">
+                    <input type="text" id="search-input" placeholder="제목, 카테고리로 검색">
+                    <button id="search-button">🔍</button>
                 </div>
+            </div>
 
-                <div class="filter-box">
-                    <h3>필터</h3>
-                    <select id="filter-category">
-                        <option value="">카테고리 전체</option>
-                        <option value="운동">운동</option>
-                        <option value="스터디">스터디</option>
-                        <option value="문화">문화</option>
-                        <option value="봉사활동">봉사활동</option>
-                    </select>
-                    <select id="filter-location">
-                        <option value="">지역 전체</option>
-                        <option value="아산">아산</option>
-                        <option value="천안">천안</option>
-                    </select>
-                </div>
+            <div class="filter-box">
+                <h3>필터</h3>
+                <select id="filter-category">
+                    <option value="">카테고리 전체</option>
+                    <option value="운동">운동</option>
+                    <option value="스터디">스터디</option>
+                    <option value="문화">문화</option>
+                    <option value="봉사활동">봉사활동</option>
+                </select>
+                <input type="text" id="filter-location" placeholder="지역으로 검색">
+            </div>
             </div>
         </div>
     </main>
@@ -273,7 +267,7 @@ try {
         });
 
 
-        // --- 검색 및 필터 기능 (이전과 동일) ---
+        // --- 검색 및 필터 기능 ---
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('filter-category');
         const locationFilter = document.getElementById('filter-location');
@@ -283,14 +277,14 @@ try {
         function applyFilters() {
             const searchTerm = searchInput.value.toLowerCase();
             const selectedCategory = categoryFilter.value;
-            const selectedLocation = locationFilter.value;
+            const selectedLocation = locationFilter.value.toLowerCase();
 
             document.querySelectorAll('.meeting-card').forEach(card => {
                 const title = card.querySelector('.card-title').textContent.toLowerCase();
                 const cardCategory = card.dataset.category;
-                const cardLocation = card.dataset.location;
+                const cardLocation = card.dataset.location.toLowerCase();
 
-                const searchMatch = title.includes(searchTerm) || cardCategory.toLowerCase().includes(searchTerm) || cardLocation.toLowerCase().includes(searchTerm);
+                const searchMatch = title.includes(searchTerm) || cardCategory.toLowerCase().includes(searchTerm);
                 const categoryMatch = !selectedCategory || cardCategory === selectedCategory;
                 const locationMatch = !selectedLocation || cardLocation.includes(selectedLocation);
 
@@ -304,7 +298,6 @@ try {
 
         searchButton.addEventListener('click', applyFilters);
         categoryFilter.addEventListener('change', applyFilters);
-        locationFilter.addEventListener('change', applyFilters);
 
     </script>
 </body>
