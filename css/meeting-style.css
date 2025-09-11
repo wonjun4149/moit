@@ -267,8 +267,7 @@ body {
 }
 
 .search-box input[type="text"],
-.filter-box select,
-.filter-box input[type="text"] {
+.filter-box select {
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
@@ -279,6 +278,17 @@ body {
     -webkit-appearance: none; /* Remove default dropdown arrow for Safari/Chrome */
     -moz-appearance: none; /* Remove default dropdown arrow for Firefox */
     appearance: none; /* Remove default dropdown arrow */
+    background-color: #fdfdfd;
+}
+
+.filter-box input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1em;
+    box-sizing: border-box;
     background-color: #fdfdfd;
 }
 
