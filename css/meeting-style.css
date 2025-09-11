@@ -267,7 +267,8 @@ body {
 }
 
 .search-box input[type="text"],
-.filter-box select {
+.filter-box select,
+.filter-box input[type="text"] {
     width: 100%;
     padding: 12px;
     margin-bottom: 15px;
