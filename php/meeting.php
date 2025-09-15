@@ -8,23 +8,35 @@ if (!isLoggedIn()) {
 }
 
 $site_title = "MOIT - 모임";
+$current_user_id = $_SESSION['user_id'] ?? null;
 
 // DB에서 실제 모임 목록을 가져옵니다.
 try {
     $pdo = getDBConnection();
-    // meetings 테이블과 users 테이블을 JOIN하여 개설자 닉네임도 함께 가져옵니다.
-    // 최신순으로 정렬합니다.
-    $stmt = $pdo->query("
+    
+    // 사용자가 로그인했을 경우, 각 모임에 대한 참여 여부를 확인하는 쿼리를 추가합니다.
+    $sql = "
         SELECT 
             m.id, m.title, m.description, m.category, m.location, 
             m.max_members, m.image_path, m.created_at, m.organizer_id,
             u.nickname AS organizer_nickname,
-            (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) AS current_members_count
+            (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) AS current_members_count,
+            (CASE 
+                WHEN EXISTS (
+                    SELECT 1 FROM meeting_participants mp 
+                    WHERE mp.meeting_id = m.id AND mp.user_id = :current_user_id
+                ) THEN 1
+                ELSE 0 
+            END) AS is_joined
         FROM meetings m
         JOIN users u ON m.organizer_id = u.id
         ORDER BY m.created_at DESC
-    ");
+    ";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['current_user_id' => $current_user_id]);
     $meetings = $stmt->fetchAll();
+
 } catch (PDOException $e) {
     // 데이터베이스 오류 발생 시, 빈 배열로 초기화하고 에러 로그를 남깁니다.
     $meetings = [];
@@ -67,14 +79,17 @@ try {
                                     $description_short = mb_substr($description_short, 0, 80) . '...';
                                 }
                                 $current_members = $meeting['current_members_count'] + 1; // 개설자 포함
-                                $isRecruiting = $current_members <= $meeting['max_members'];
+                                $isRecruiting = $current_members < $meeting['max_members'];
                                 $status_text = $isRecruiting ? '모집중' : '모집완료';
                                 $status_class = $isRecruiting ? 'recruiting' : 'completed';
                             ?>
                             <div class="meeting-card" 
                                  data-id="<?php echo $meeting['id']; ?>"
                                  data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
-                                 data-location="<?php echo htmlspecialchars($meeting['location']); ?>">
+                                 data-location="<?php echo htmlspecialchars($meeting['location']); ?>"
+                                 data-is-joined="<?php echo $meeting['is_joined'] ? 'true' : 'false'; ?>"
+                                 data-organizer-id="<?php echo $meeting['organizer_id']; ?>"
+                                 data-is-full="<?php echo !$isRecruiting ? 'true' : 'false'; ?>">
                                 <div class="card-image">
                                     <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
                                          alt="<?php echo htmlspecialchars($meeting['title']); ?>">
@@ -98,7 +113,7 @@ try {
                                         </div>
                                     <div class="card-footer">
                                         <button class="btn-details">상세보기</button>
-                                        <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $meeting['organizer_id']): ?>
+                                        <?php if ($current_user_id == $meeting['organizer_id']): ?>
                                             <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까?');">
                                                 <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
                                                 <button type="submit" class="btn-delete">삭제하기</button>
@@ -157,11 +172,8 @@ try {
                     <span>👤 개설자: <strong id="modal-details-organizer"></strong></span>
                 </div>
             </div>
-            <div class="modal-footer">
-                <form action="join_meeting.php" method="POST">
-                    <input type="hidden" name="meeting_id" id="modal-join-meeting-id" value="">
-                    <button type="submit" class="btn-primary">신청하기</button>
-                </form>
+            <div class="modal-footer" id="modal-details-footer">
+                <!-- 버튼이 동적으로 여기에 추가됩니다. -->
             </div>
         </div>
     </div>
@@ -209,6 +221,8 @@ try {
 
     <script src="/js/navbar.js"></script>
     <script>
+        const currentUserId = '<?php echo $current_user_id; ?>';
+
         // --- 필요한 DOM 요소들 선택 ---
         const createModal = document.getElementById('create-modal');
         const detailsModal = document.getElementById('details-modal');
@@ -233,7 +247,6 @@ try {
 
         // --- 상세보기 기능 ---
         meetingCardsContainer.addEventListener('click', (e) => {
-            // '상세보기' 버튼이 아니면 아무것도 하지 않음
             if (!e.target.classList.contains('btn-details')) {
                 return;
             }
@@ -243,7 +256,7 @@ try {
             // 카드에서 정보 추출
             const id = card.dataset.id;
             const title = card.querySelector('.card-title').textContent;
-            const description = card.querySelector('.card-description-full').textContent; // 전체 설명
+            const description = card.querySelector('.card-description-full').textContent;
             const category = card.querySelector('.card-category').textContent;
             const status = card.querySelector('.card-status').textContent.trim();
             const statusClass = card.querySelector('.card-status').className;
@@ -251,20 +264,55 @@ try {
             const members = card.querySelector('.member-count').textContent.trim();
             const organizer = card.querySelector('.organizer-nickname-hidden')?.textContent || '정보 없음';
             const imgSrc = card.querySelector('.card-image img').src;
+            
+            const isJoined = card.dataset.isJoined === 'true';
+            const organizerId = card.dataset.organizerId;
+            const isFull = card.dataset.isFull === 'true';
 
             // 모달에 정보 채우기
             document.getElementById('modal-details-title').textContent = title;
             document.getElementById('modal-details-description').textContent = description;
             document.getElementById('modal-details-category').textContent = category;
             document.getElementById('modal-details-status').textContent = status;
-            document.getElementById('modal-details-status').className = 'card-status ' + statusClass.split(' ')[1]; // class 재설정
+            document.getElementById('modal-details-status').className = 'card-status ' + statusClass.split(' ')[1];
             document.getElementById('modal-details-location').textContent = location;
-            document.getElementById('modal-details-members').textContent = members; // '명'은 HTML에 이미 있으므로 제외
+            document.getElementById('modal-details-members').textContent = members;
             document.getElementById('modal-details-organizer').textContent = organizer;
             document.getElementById('modal-details-img').src = imgSrc;
-            document.getElementById('modal-join-meeting-id').value = id;
             
-            // 상세보기 모달 열기
+            // 모달 푸터 버튼 업데이트
+            const modalFooter = document.getElementById('modal-details-footer');
+            modalFooter.innerHTML = ''; // 기존 버튼 삭제
+
+            if (currentUserId === organizerId) {
+                // 개설자는 신청/취소 버튼이 보이지 않음
+            } else if (isJoined) {
+                // 이미 신청한 경우 -> 취소 버튼
+                modalFooter.innerHTML = `
+                    <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
+                        <input type="hidden" name="meeting_id" value="${id}">
+                        <button type="submit" class="btn-cancel">신청 취소</button>
+                    </form>
+                `;
+            } else {
+                // 신청하지 않은 경우 -> 신청 버튼
+                const joinButton = document.createElement('button');
+                joinButton.type = 'submit';
+                joinButton.className = 'btn-primary';
+                joinButton.textContent = '신청하기';
+                if (isFull) {
+                    joinButton.disabled = true;
+                    joinButton.textContent = '모집완료';
+                }
+
+                const form = document.createElement('form');
+                form.action = 'join_meeting.php';
+                form.method = 'POST';
+                form.innerHTML = `<input type="hidden" name="meeting_id" value="${id}">`;
+                form.appendChild(joinButton);
+                modalFooter.appendChild(form);
+            }
+            
             openModal(detailsModal);
         });
 
@@ -273,7 +321,6 @@ try {
         const searchInput = document.getElementById('search-input');
         const categoryFilter = document.getElementById('filter-category');
         const locationFilter = document.getElementById('filter-location');
-
         const searchButton = document.getElementById('search-button');
 
         function applyFilters() {
@@ -300,6 +347,7 @@ try {
 
         searchButton.addEventListener('click', applyFilters);
         categoryFilter.addEventListener('change', applyFilters);
+        locationFilter.addEventListener('keyup', applyFilters);
 
     </script>
 </body>
