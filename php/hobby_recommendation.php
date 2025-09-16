@@ -1,5 +1,5 @@
 <?php
-// 개선된 취미 추천 페이지 - 점수 기반 추천 시스템
+// MVP 취미 추천 페이지 - 상세 설문 기반
 require_once 'config.php';
 
 // 디버그 모드 확인
@@ -60,38 +60,52 @@ try {
 }
 
 // 설문 제출 처리 - 개선된 추천 알고리즘
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['submit_survey']) || isset($_POST['survey_submitted']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
     debug_output("=== 설문 제출 처리 시작 ===");
     
     try {
-        $activity_preference = $_POST['activity_preference'] ?? '';
-        $physical_preference = $_POST['physical_preference'] ?? '';
-        $group_preference = $_POST['group_preference'] ?? '';
-        $cost_preference = $_POST['cost_preference'] ?? '';
-        $time_preference = $_POST['time_preference'] ?? '';
+        // Part 1
+        $age_group = $_POST['age_group'] ?? '';
+        $gender = $_POST['gender'] ?? '';
+        $occupation = $_POST['occupation'] ?? '';
+        $weekly_time = $_POST['weekly_time'] ?? '';
+        $monthly_budget = $_POST['monthly_budget'] ?? '';
+
+        // Part 2
+        $q6 = $_POST['q6_introversion'] ?? 0;
+        $q7 = $_POST['q7_openness'] ?? 0;
+        $q8 = $_POST['q8_planning'] ?? 0;
+        $q9 = $_POST['q9_creativity'] ?? 0;
+        $q10 = $_POST['q10_skill_oriented'] ?? 0;
+        $q11 = $_POST['q11_active_stress_relief'] ?? 0;
+        $q12 = $_POST['q12_monetization'] ?? 0;
+        $q13 = $_POST['q13_online_community'] ?? 0;
+        $q14 = $_POST['q14_generalist'] ?? 0;
+        $q15 = $_POST['q15_process_oriented'] ?? 0;
+
+        $part1_data = compact('age_group', 'gender', 'occupation', 'weekly_time', 'monthly_budget');
+        $part2_data = compact('q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12', 'q13', 'q14', 'q15');
         
-        debug_output("설문 답변들", [
-            'activity_preference' => $activity_preference,
-            'physical_preference' => $physical_preference,
-            'group_preference' => $group_preference,
-            'cost_preference' => $cost_preference,
-            'time_preference' => $time_preference
-        ]);
-        
-        // 모든 값이 입력되었는지 확인
-        if (empty($activity_preference) || empty($physical_preference) || empty($group_preference) || 
-            empty($cost_preference) || empty($time_preference)) {
+        debug_output("설문 답변 (Part 1)", $part1_data);
+        debug_output("설문 답변 (Part 2)", $part2_data);
+
+        // 필수 값 확인
+        $required_fields = array_merge($part1_data, $part2_data);
+        if (in_array('', $required_fields, true) || in_array(0, $part2_data, true)) {
             debug_output("일부 답변 누락");
             $error_message = '모든 질문에 답변해주세요.';
         } else {
             debug_output("모든 답변 완료 - 데이터베이스 저장 시작");
             
             // 설문 응답 저장
-            $stmt = $pdo->prepare("
-                INSERT INTO hobby_surveys (user_id, activity_preference, physical_preference, group_preference, cost_preference, time_preference) 
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
-            $result = $stmt->execute([$_SESSION['user_id'], $activity_preference, $physical_preference, $group_preference, $cost_preference, $time_preference]);
+            $sql = "INSERT INTO hobby_surveys (user_id, age_group, gender, occupation, weekly_time, monthly_budget, 
+                        q6_introversion, q7_openness, q8_planning, q9_creativity, q10_skill_oriented, 
+                        q11_active_stress_relief, q12_monetization, q13_online_community, q14_generalist, q15_process_oriented)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $pdo->prepare($sql);
+            
+            $params_db = array_merge([$_SESSION['user_id']], array_values($part1_data), array_values($part2_data));
+            $result = $stmt->execute($params_db);
             $survey_id = $pdo->lastInsertId();
             
             debug_output("설문 저장 결과", "성공: " . ($result ? 'YES' : 'NO') . ", ID: $survey_id");
@@ -100,66 +114,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['submit_survey']) || i
                 throw new Exception("설문 저장에 실패했습니다.");
             }
             
-            // 개선된 점수 기반 추천 알고리즘
-            debug_output("=== 개선된 추천 알고리즘 시작 ===");
+            // MVP 추천 알고리즘
+            debug_output("=== MVP 추천 알고리즘 시작 ===");
             
-            // 점수 기반 쿼리 (모든 취미에 대해 점수 계산)
             $query = "
                 SELECT *, 
                 (
-                    -- 활동 장소 점수 (30%)
+                    -- 1. 활동성 (q11) vs physical_level (가중치: 0.3)
+                    (CASE
+                        WHEN physical_level = '높음' THEN ? -- q11
+                        WHEN physical_level = '보통' THEN 3
+                        WHEN physical_level = '낮음' THEN 6 - ? -- q11
+                    END) / 5 * 0.3 +
+
+                    -- 2. 그룹 크기 (q6) vs group_size (가중치: 0.25)
+                    (CASE
+                        WHEN group_size = '개인' THEN ? -- q6
+                        WHEN group_size = '소그룹' THEN ? -- q6
+                        WHEN group_size = '대그룹' THEN 6 - ? -- q6
+                        ELSE 3
+                    END) / 5 * 0.25 +
+
+                    -- 3. 비용 (monthly_budget) vs cost_level (가중치: 0.15)
                     CASE 
-                        WHEN ? = '상관없음' THEN 0.3
-                        WHEN activity_type = ? THEN 0.3
-                        WHEN activity_type = '혼합' THEN 0.2
-                        ELSE 0
+                        WHEN ? = '5만원 미만' AND cost_level IN ('무료', '저비용') THEN 0.15
+                        WHEN ? = '5~10만원' AND cost_level IN ('저비용', '중비용') THEN 0.15
+                        WHEN ? = '10~20만원' AND cost_level IN ('중비용', '고비용') THEN 0.15
+                        WHEN ? = '20만원 이상' AND cost_level = '고비용' THEN 0.15
+                        ELSE 0.05
                     END +
-                    
-                    -- 체력 요구도 점수 (30%) 
-                    CASE 
-                        WHEN ? = '상관없음' THEN 0.3
-                        WHEN physical_level = ? THEN 0.3
-                        WHEN (? = '높음' AND physical_level = '보통') THEN 0.15
-                        WHEN (? = '보통' AND physical_level IN ('높음', '낮음')) THEN 0.15
-                        WHEN (? = '낮음' AND physical_level = '보통') THEN 0.15
-                        ELSE 0
-                    END +
-                    
-                    -- 그룹 규모 점수 (20%)
-                    CASE 
-                        WHEN ? = '상관없음' THEN 0.2
-                        WHEN group_size = ? THEN 0.2
-                        WHEN group_size = '상관없음' THEN 0.15
-                        ELSE 0
-                    END +
-                    
-                    -- 비용 점수 (20%)
-                    CASE 
-                        WHEN ? = '상관없음' THEN 0.2
-                        WHEN cost_level = ? THEN 0.2
-                        WHEN (? = '무료' AND cost_level = '저비용') THEN 0.1
-                        WHEN (? = '저비용' AND cost_level IN ('무료', '중비용')) THEN 0.1
-                        WHEN (? = '중비용' AND cost_level IN ('저비용', '고비용')) THEN 0.1
-                        WHEN (? = '고비용' AND cost_level = '중비용') THEN 0.1
-                        ELSE 0
-                    END
+
+                    -- 4. 실력 향상 동기 (q10) vs difficulty_level (가중치: 0.15)
+                    (CASE
+                        WHEN difficulty_level = '고급' THEN ? -- q10
+                        WHEN difficulty_level = '중급' THEN 3
+                        WHEN difficulty_level = '초급' THEN 6 - ? -- q10
+                    END) / 5 * 0.15 +
+
+                    -- 5. 독창성 (q9) vs category (가중치: 0.15)
+                    (CASE
+                        WHEN category IN ('예술', '생활', '취미') THEN ? -- q9
+                        WHEN category IN ('운동', '학습') THEN 6 - ? -- q9
+                        ELSE 3
+                    END) / 5 * 0.15
                 ) as score
                 FROM hobbies 
                 HAVING score > 0
                 ORDER BY score DESC, name ASC
                 LIMIT 6
             ";
-            
-            // 파라미터 준비 (각 조건마다 필요한 만큼 반복)
+
             $params = [
-                // 활동 장소 (2개)
-                $activity_preference, $activity_preference,
-                // 체력 요구도 (5개)  
-                $physical_preference, $physical_preference, $physical_preference, $physical_preference, $physical_preference,
-                // 그룹 규모 (2개)
-                $group_preference, $group_preference,
-                // 비용 (6개)
-                $cost_preference, $cost_preference, $cost_preference, $cost_preference, $cost_preference, $cost_preference
+                $q11, $q11, // 활동성
+                $q6, $q6, $q6, // 그룹 크기
+                $monthly_budget, $monthly_budget, $monthly_budget, $monthly_budget, // 비용
+                $q10, $q10, // 실력 향상
+                $q9, $q9 // 독창성
             ];
             
             debug_output("개선된 쿼리", $query);
@@ -257,7 +267,7 @@ debug_output("최종 상태", [
             <p><strong>현재 상태:</strong></p>
             <ul>
                 <li>POST 요청: <?php echo ($_SERVER['REQUEST_METHOD'] == 'POST') ? '✅' : '❌'; ?></li>
-                <li>설문 제출: <?php echo (isset($_POST['submit_survey']) || isset($_POST['survey_submitted'])) ? '✅' : '❌'; ?></li>
+                <li>설문 제출: <?php echo isset($_POST['submit_survey']) ? '✅' : '❌'; ?></li>
                 <li>추천 결과: <?php echo count($recommendations); ?>개</li>
                 <li>에러: <?php echo $error_message ?: '없음'; ?></li>
             </ul>
@@ -284,129 +294,101 @@ debug_output("최종 상태", [
                             <div class="progress-bar">
                                 <div class="progress-fill" id="progressFill"></div>
                             </div>
-                            <span class="progress-text" id="progressText">1 / 5</span>
+                            <span class="progress-text" id="progressText">1 / 15</span>
                         </div>
 
-                        <h2>좋아하는 것을 알려주세요.</h2>
-                        <p class="survey-subtitle">몇 가지 질문으로 맞춤 취미를 추천해드릴게요!</p>
-                        
+                        <h2>당신의 취향을 알려주세요</h2>
+                        <p class="survey-subtitle">15개 질문으로 딱 맞는 취미를 찾아드릴게요!</p>
+
                         <form method="POST" class="survey-form" id="surveyForm">
-                            <!-- 히든 필드 추가 -->
-                            <input type="hidden" name="survey_submitted" value="1">
-                            
-                            <!-- 디버그 모드일 때 히든 필드 추가 -->
                             <?php if ($debug_mode): ?>
                                 <input type="hidden" name="debug" value="1">
                             <?php endif; ?>
-                            
-                            <!-- 질문들 (동일) -->
-                            <div class="question-step active" data-step="1">
+
+                            <?php
+                                $part1_questions = [
+                                    ['name' => 'age_group', 'label' => '1. 연령대를 선택해 주세요.', 'options' => ['10대', '20대', '30대', '40대', '50대 이상']],
+                                    ['name' => 'gender', 'label' => '2. 성별을 선택해 주세요.', 'options' => ['남성', '여성', '선택 안 함']],
+                                    ['name' => 'occupation', 'label' => '3. 현재 어떤 일을 하고 계신가요?', 'options' => ['학생', '직장인', '프리랜서', '주부', '구직자', '기타']],
+                                    ['name' => 'weekly_time', 'label' => '4. 일주일에 온전히 나를 위해 사용할 수 있는 시간은 어느 정도인가요?', 'options' => ['3시간 미만', '3~5시간', '5~10시간', '10시간 이상']],
+                                    ['name' => 'monthly_budget', 'label' => '5. 한 달에 취미 활동을 위해 얼마까지 지출할 수 있나요?', 'options' => ['5만원 미만', '5~10만원', '10~20만원', '20만원 이상']],
+                                ];
+                                ?>
+
+                                <?php foreach ($part1_questions as $q): ?>
                                 <div class="question-group">
-                                    <label class="question-label">활동적인 취미를 선호하시나요?</label>
-                                    <div class="option-group">
-                                        <label class="option-label">
-                                            <input type="radio" name="physical_preference" value="높음" required>
-                                            <span class="option-text">네, 활동적인 취미를 좋아해요</span>
+                                    <label class="question-label"><?php echo $q['label']; ?></label>
+                                    <div class="option-group-inline">
+                                        <?php foreach ($q['options'] as $opt): ?>
+                                        <label class="option-label-inline">
+                                            <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $opt; ?>" required>
+                                            <span><?php echo $opt; ?></span>
                                         </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="physical_preference" value="낮음" required>
-                                            <span class="option-text">아니요, 조용한 취미를 선호해요</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="physical_preference" value="보통" required>
-                                            <span class="option-text">둘 다 상관없어요</span>
-                                        </label>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
+                                <?php endforeach; ?>
                             </div>
 
-                            <div class="question-step" data-step="2">
-                                <div class="question-group">
-                                    <label class="question-label">어디서 활동하는 것을 선호하시나요?</label>
-                                    <div class="option-group">
-                                        <label class="option-label">
-                                            <input type="radio" name="activity_preference" value="실외" required>
-                                            <span class="option-text">실외 활동을 좋아해요</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="activity_preference" value="실내" required>
-                                            <span class="option-text">실내 활동을 선호해요</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="activity_preference" value="상관없음" required>
-                                            <span class="option-text">장소는 상관없어요</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Part 2: 스타일 -->
+                            <div class="survey-part">
+                                <h3>Part 2. 당신의 스타일 알아보기</h3>
+                                <p class="part-subtitle">정답은 없으니, 가장 가깝다고 생각하는 곳에 편하게 체크해 주세요.</p>
 
-                            <div class="question-step" data-step="3">
-                                <div class="question-group">
-                                    <label class="question-label">몇 명과 함께 하고 싶으세요?</label>
-                                    <div class="option-group">
-                                        <label class="option-label">
-                                            <input type="radio" name="group_preference" value="개인" required>
-                                            <span class="option-text">혼자서 하고 싶어요</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="group_preference" value="소그룹" required>
-                                            <span class="option-text">소수의 사람들과 함께</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="group_preference" value="대그룹" required>
-                                            <span class="option-text">많은 사람들과 함께</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="group_preference" value="상관없음" required>
-                                            <span class="option-text">인원은 상관없어요</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+                                <?php
+                                $part2_questions = [
+                                    ['name' => 'q6_introversion', 'label' => '6. 새로운 사람들과 어울리기보다, 혼자 또는 가까운 친구와 깊이 있는 시간을 보내는 것을 선호합니다.'],
+                                    ['name' => 'q7_openness', 'label' => '7. 반복적인 일상에 안정감을 느끼기보다, 예측 불가능한 새로운 경험을 통해 영감을 얻는 편입니다.'],
+                                    ['name' => 'q8_planning', 'label' => '8. 즉흥적으로 행동하기보다, 명확한 목표를 세우고 계획에 따라 꾸준히 실행하는 것에서 성취감을 느낍니다.'],
+                                    ['name' => 'q9_creativity', 'label' => '9. 정해진 규칙을 따르기보다, 나만의 방식과 스타일을 더해 독창적인 결과물을 만드는 것을 즐깁니다.'],
+                                    ['name' => 'q10_skill_oriented', 'label' => '10. 과정 자체를 즐기는 것도 좋지만, 꾸준한 연습을 통해 실력이 향상되는 것을 눈으로 확인할 때 가장 큰 보람을 느낍니다.'],
+                                    ['name' => 'q11_active_stress_relief', 'label' => '11. 하루의 스트레스를 조용히 생각하며 풀기보다, 몸을 움직여 땀을 흘리며 해소하는 것을 선호합니다.'],
+                                    ['name' => 'q12_monetization', 'label' => '12. 취미 활동을 통해 새로운 수익을 창출하거나, SNS에서 영향력을 키우는 것에 관심이 많습니다.'],
+                                    ['name' => 'q13_online_community', 'label' => '13. 오프라인에서 직접 만나 교류하는 것만큼, 온라인 커뮤니티에서 소통하는 것에서도 강한 소속감을 느낍니다.'],
+                                    ['name' => 'q14_generalist', 'label' => '14. 하나의 취미를 깊게 파고드는 전문가가 되기보다, 다양한 분야를 경험해보는 제너럴리스트가 되고 싶습니다.'],
+                                    ['name' => 'q15_process_oriented', 'label' => '15. 이 취미를 통해 \'무엇을 얻을 수 있는가\'보다 \'그 순간이 얼마나 즐거운가\'가 더 중요합니다.'],
+                                ];
 
-                            <div class="question-step" data-step="4">
-                                <div class="question-group">
-                                    <label class="question-label">비용은 어느 정도까지 괜찮으세요?</label>
-                                    <div class="option-group">
-                                        <label class="option-label">
-                                            <input type="radio" name="cost_preference" value="무료" required>
-                                            <span class="option-text">무료로 할 수 있는 것</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="cost_preference" value="저비용" required>
-                                            <span class="option-text">조금의 비용은 괜찮아요</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="cost_preference" value="중비용" required>
-                                            <span class="option-text">적당한 비용은 지불할 수 있어요</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="cost_preference" value="고비용" required>
-                                            <span class="option-text">비용은 상관없어요</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+                                $all_questions = array_merge(
+                                    array_map(fn($q) => array_merge($q, ['type' => 'radio']), $part1_questions),
+                                    array_map(fn($q) => array_merge($q, ['type' => 'likert']), $part2_questions)
+                                );
+                            ?>
 
-                            <div class="question-step" data-step="5">
-                                <div class="question-group">
-                                    <label class="question-label">언제 활동하고 싶으세요?</label>
-                                    <div class="option-group">
-                                        <label class="option-label">
-                                            <input type="radio" name="time_preference" value="주중" required>
-                                            <span class="option-text">평일에 주로 활동</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="time_preference" value="주말" required>
-                                            <span class="option-text">주말에 주로 활동</span>
-                                        </label>
-                                        <label class="option-label">
-                                            <input type="radio" name="time_preference" value="상관없음" required>
-                                            <span class="option-text">시간은 상관없어요</span>
-                                        </label>
-                                    </div>
+                            <?php foreach ($all_questions as $index => $q): ?>
+                                <div class="question-step <?php echo $index === 0 ? 'active' : ''; ?>" data-step="<?php echo $index + 1; ?>">
+                                    <?php if ($q['type'] === 'radio'): ?>
+                                        <div class="question-group">
+                                            <label class="question-label"><?php echo $q['label']; ?></label>
+                                            <div class="option-group-inline">
+                                                <?php foreach ($q['options'] as $opt): ?>
+                                                <label class="option-label-inline">
+                                                    <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $opt; ?>" required>
+                                                    <span><?php echo $opt; ?></span>
+                                                </label>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php elseif ($q['type'] === 'likert'): ?>
+                                        <div class="question-group-likert">
+                                            <label class="question-label-likert"><?php echo $q['label']; ?></label>
+                                            <div class="likert-scale">
+                                                <span class="likert-label-left">전혀 그렇지 않다</span>
+                                                <div class="likert-options">
+                                                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                    <label class="likert-option">
+                                                        <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $i; ?>" required>
+                                                        <span class="likert-radio-button"></span>
+                                                        <span class="likert-number"><?php echo $i; ?></span>
+                                                    </label>
+                                                    <?php endfor; ?>
+                                                </div>
+                                                <span class="likert-label-right">매우 그렇다</span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
-                            </div>
+                            <?php endforeach; ?>
 
                             <!-- 버튼 영역 -->
                             <div class="survey-buttons">
@@ -473,96 +455,87 @@ debug_output("최종 상태", [
 
     <script src="/js/navbar.js"></script>
     <script>
-        // 설문조사 단계 관리 JavaScript (동일)
-        let currentStep = 1;
-        const totalSteps = 5;
-
-        const questionSteps = document.querySelectorAll('.question-step');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const submitBtn = document.getElementById('submitBtn');
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
         const surveyForm = document.getElementById('surveyForm');
+        if (surveyForm) {
+            let currentStep = 1;
+            const totalSteps = 15;
 
-        updateStepDisplay();
-        updateProgress();
+            const questionSteps = document.querySelectorAll('.question-step');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const submitBtn = document.getElementById('submitBtn');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
 
-        prevBtn?.addEventListener('click', function() {
-            if (currentStep > 1) {
-                currentStep--;
-                updateStepDisplay();
-                updateProgress();
-            }
-        });
+            updateStepDisplay();
+            updateProgress();
 
-        nextBtn?.addEventListener('click', function() {
-            if (validateCurrentStep()) {
-                if (currentStep < totalSteps) {
-                    currentStep++;
+            prevBtn.addEventListener('click', function() {
+                if (currentStep > 1) {
+                    currentStep--;
                     updateStepDisplay();
                     updateProgress();
                 }
-            } else {
-                alert('답변을 선택해주세요.');
-            }
-        });
+            });
 
-        submitBtn?.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            if (validateCurrentStep()) {
-                const allAnswered = ['physical_preference', 'activity_preference', 'group_preference', 'cost_preference', 'time_preference'].every(name => {
-                    const checked = document.querySelector(`input[name="${name}"]:checked`);
-                    return checked !== null;
-                });
-                
-                if (allAnswered) {
+            nextBtn.addEventListener('click', function() {
+                if (validateCurrentStep()) {
+                    if (currentStep < totalSteps) {
+                        currentStep++;
+                        updateStepDisplay();
+                        updateProgress();
+                    }
+                } else {
+                    alert('답변을 선택해주세요.');
+                }
+            });
+
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (validateCurrentStep()) {
                     submitBtn.textContent = '분석 중...';
                     submitBtn.disabled = true;
                     surveyForm.submit();
                 } else {
-                    alert('모든 질문에 답변해주세요.');
+                    alert('마지막 질문에 답변해주세요.');
                 }
-            } else {
-                alert('현재 단계 답변을 선택해주세요.');
+            });
+
+            function updateStepDisplay() {
+                questionSteps.forEach(step => step.classList.remove('active'));
+                const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
+                if (currentQuestionStep) currentQuestionStep.classList.add('active');
+
+                prevBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
+                
+                if (currentStep === totalSteps) {
+                    nextBtn.style.display = 'none';
+                    submitBtn.style.display = 'inline-block';
+                } else {
+                    nextBtn.style.display = 'inline-block';
+                    submitBtn.style.display = 'none';
+                }
             }
-        });
 
-        function updateStepDisplay() {
-            questionSteps.forEach(step => step.classList.remove('active'));
-            const currentQuestionStep = document.querySelector(`[data-step="${currentStep}"]`);
-            if (currentQuestionStep) currentQuestionStep.classList.add('active');
+            function updateProgress() {
+                const progress = (currentStep / totalSteps) * 100;
+                if (progressFill) progressFill.style.width = progress + '%';
+                if (progressText) progressText.textContent = `${currentStep} / ${totalSteps}`;
+            }
 
-            if (prevBtn) prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
-            
-            if (currentStep === totalSteps) {
-                if (nextBtn) nextBtn.style.display = 'none';
-                if (submitBtn) submitBtn.style.display = 'block';
-            } else {
-                if (nextBtn) nextBtn.style.display = 'block';
-                if (submitBtn) submitBtn.style.display = 'none';
+            function validateCurrentStep() {
+                const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
+                if (!currentQuestionStep) return false;
+
+                const radioInput = currentQuestionStep.querySelector('input[type="radio"]');
+                if (!radioInput) return false;
+
+                const radioName = radioInput.name;
+                const checkedRadio = currentQuestionStep.querySelector(`input[name="${radioName}"]:checked`);
+                return checkedRadio !== null;
             }
         }
 
-        function updateProgress() {
-            const progress = (currentStep / totalSteps) * 100;
-            if (progressFill) progressFill.style.width = progress + '%';
-            if (progressText) progressText.textContent = `${currentStep} / ${totalSteps}`;
-        }
-
-        function validateCurrentStep() {
-            const currentQuestionStep = document.querySelector(`[data-step="${currentStep}"]`);
-            if (!currentQuestionStep) return false;
-
-            const radioInputs = currentQuestionStep.querySelectorAll('input[type="radio"]');
-            const radioName = radioInputs[0]?.name;
-            
-            if (!radioName) return false;
-
-            const checkedRadio = currentQuestionStep.querySelector(`input[name="${radioName}"]:checked`);
-            return checkedRadio !== null;
-        }
 
         function loadMeetups(hobbyId) {
             window.location.href = `hobby_recommendation.php?hobby_id=${hobbyId}`;
