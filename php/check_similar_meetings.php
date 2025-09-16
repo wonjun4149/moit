@@ -16,30 +16,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo = getDBConnection();
 
-        // Simple keyword extraction from title (split by space)
-        $keywords = array_filter(explode(' ', $title));
-
-        if (empty($keywords)) {
-            echo json_encode([]);
-            exit;
-        }
-
         $sql = "
             SELECT id, title, description, category, location, max_members, image_path, 
                    (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) + 1 AS current_members
             FROM meetings m
-            WHERE category = :category AND location = :location AND (";
-        
-        $conditions = [];
-        $params = ['category' => $category, 'location' => $location];
-        
-        foreach ($keywords as $index => $keyword) {
-            $param_name = 'keyword' . $index;
-            $conditions[] = "title LIKE :" . $param_name;
-            $params[$param_name] = '%' . $keyword . '%';
-        }
-        
-        $sql .= implode(' OR ', $conditions) . ")";
+            WHERE category = :category AND location = :location AND (
+                title LIKE :new_title_keyword OR :new_title LIKE CONCAT('%', title, '%')
+            )
+        ";
+
+        $params = [
+            'category' => $category,
+            'location' => $location,
+            'new_title' => $title,
+            'new_title_keyword' => '%' . $title . '%'
+        ];
 
         // Exclude the meeting being created if it has an ID (for future edits)
         if (isset($_POST['meeting_id'])) {
