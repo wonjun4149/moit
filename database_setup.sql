@@ -10,7 +10,7 @@ USE moit_db;
 -- 사용자 테이블 생성
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(50) PRIMARY KEY COMMENT '사용자 아이디 (4글자 이상)',
-    password VARCHAR(255) NOT NULL COMMENT '해시화된 비밀번호',
+    password_hash VARCHAR(255) NOT NULL COMMENT '해시화된 비밀번호',
     name VARCHAR(20) NOT NULL COMMENT '실명',
     nickname VARCHAR(15) NOT NULL UNIQUE COMMENT '닉네임',
     email VARCHAR(100) NOT NULL UNIQUE COMMENT '이메일 주소',
@@ -42,11 +42,23 @@ CREATE TABLE IF NOT EXISTS hobbies (
 CREATE TABLE IF NOT EXISTS hobby_surveys (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(50) NOT NULL,
-    activity_preference ENUM('실내', '실외', '상관없음') COMMENT '활동 선호도',
-    physical_preference ENUM('낮음', '보통', '높음') COMMENT '체력 활동 선호도',
-    group_preference ENUM('개인', '소그룹', '대그룹', '상관없음') COMMENT '그룹 규모 선호도',
-    cost_preference ENUM('무료', '저비용', '중비용', '고비용') COMMENT '비용 선호도',
-    time_preference ENUM('주중', '주말', '상관없음') COMMENT '시간 선호도',
+    -- Part 1: Basic Info
+    age_group ENUM('10대', '20대', '30대', '40대', '50대 이상') COMMENT '연령대',
+    gender ENUM('남성', '여성', '선택 안 함') COMMENT '성별',
+    occupation ENUM('학생', '직장인', '프리랜서', '주부', '구직자', '기타') COMMENT '직업',
+    weekly_time ENUM('3시간 미만', '3~5시간', '5~10시간', '10시간 이상') COMMENT '주간 가용 시간',
+    monthly_budget ENUM('5만원 미만', '5~10만원', '10~20만원', '20만원 이상') COMMENT '월간 예산',
+    -- Part 2: Style (1-5 scale)
+    q6_introversion TINYINT COMMENT '선호: 혼자/소수 vs 다수',
+    q7_openness TINYINT COMMENT '선호: 새로운 경험 vs 안정감',
+    q8_planning TINYINT COMMENT '선호: 계획적 실행 vs 즉흥적',
+    q9_creativity TINYINT COMMENT '선호: 독창성 vs 규칙',
+    q10_skill_oriented TINYINT COMMENT '동기: 실력 향상 vs 과정',
+    q11_active_stress_relief TINYINT COMMENT '스트레스 해소: 활동적 vs 정적',
+    q12_monetization TINYINT COMMENT '관심: 수익 창출/영향력',
+    q13_online_community TINYINT COMMENT '소속감: 온라인 vs 오프라인',
+    q14_generalist TINYINT COMMENT '지향: 제너럴리스트 vs 스페셜리스트',
+    q15_process_oriented TINYINT COMMENT '중요: 즐거움 vs 결과물',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
@@ -72,7 +84,7 @@ CREATE TABLE IF NOT EXISTS hobby_recommendations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='취미 추천 기록 테이블';
 
 -- 모임 모집 공고 테이블
-CREATE TABLE IF NOT EXISTS meetup_posts (
+CREATE TABLE IF NOT EXISTS meetings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(100) NOT NULL COMMENT '모집 제목',
     description TEXT NOT NULL COMMENT '모집 내용',
@@ -83,6 +95,7 @@ CREATE TABLE IF NOT EXISTS meetup_posts (
     max_participants INT DEFAULT 10 COMMENT '최대 참여 인원',
     current_participants INT DEFAULT 1 COMMENT '현재 참여 인원',
     status ENUM('모집중', '모집완료', '진행중', '완료', '취소') DEFAULT '모집중',
+    image_path VARCHAR(255) COMMENT '모임 대표 이미지 경로',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (hobby_id) REFERENCES hobbies(id) ON DELETE CASCADE,
@@ -95,16 +108,16 @@ CREATE TABLE IF NOT EXISTS meetup_posts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='모임 모집 공고 테이블';
 
 -- 모임 참여자 테이블
-CREATE TABLE IF NOT EXISTS meetup_participants (
+CREATE TABLE IF NOT EXISTS meeting_participants (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    meetup_id INT NOT NULL,
+    meeting_id INT NOT NULL,
     user_id VARCHAR(50) NOT NULL,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('신청', '승인', '거절', '취소') DEFAULT '신청',
-    FOREIGN KEY (meetup_id) REFERENCES meetup_posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_participation (meetup_id, user_id),
-    INDEX idx_meetup_id (meetup_id),
+    UNIQUE KEY unique_participation (meeting_id, user_id),
+    INDEX idx_meeting_id (meeting_id),
     INDEX idx_user_id (user_id),
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='모임 참여자 테이블';
@@ -123,13 +136,13 @@ INSERT IGNORE INTO hobbies (name, category, description, difficulty_level, activ
 ('게임', '취미', '다양한 장르의 게임을 즐기는 활동', '초급', '실내', '개인', '중비용', '낮음');
 
 -- 샘플 모집 공고 데이터 (테스트용)
--- 실제 사용 시에는 user_id가 존재하는 사용자로 수정해야 합니다
--- INSERT IGNORE INTO meetup_posts (title, description, hobby_id, organizer_id, location, meeting_date, max_participants) VALUES 
+-- 실제 사용 시에는 organizer_id가 존재하는 사용자로 수정해야 합니다
+-- INSERT IGNORE INTO meetings (title, description, hobby_id, organizer_id, location, meeting_date, max_participants) VALUES
 -- ('주말 축구 모임 모집', '매주 토요일 오전 축구 모임에 참여하실 분들을 모집합니다.', 1, 'testuser', '서울 월드컵공원', '2024-12-15 10:00:00', 20);
 
 -- 테스트 데이터 삽입 (선택사항)
 -- 비밀번호는 'test123'으로 해시화된 값입니다.
-INSERT IGNORE INTO users (id, password, name, nickname, email) VALUES 
+INSERT IGNORE INTO users (id, password_hash, name, nickname, email) VALUES
 ('testuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '테스트', '테스터', 'test@example.com');
 
 -- 생성된 테이블 목록 확인
