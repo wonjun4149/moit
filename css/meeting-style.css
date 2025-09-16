@@ -402,6 +402,22 @@ body {
     background-color: #229954; /* Darker green */
 }
 
+.btn-cancel {
+    padding: 15px 30px;
+    background-color: #e74c3c; /* Red */
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-cancel:hover {
+    background-color: #c0392b; /* Darker red */
+}
+
 /* Specific styles for Details Modal */
 .modal-img {
     width: 100%;
