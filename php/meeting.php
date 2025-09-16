@@ -225,6 +225,20 @@ try {
         </div>
     </div>
 
+    <div id="recommendation-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <h2>이런 모임은 어떠세요?</h2>
+            <p>입력하신 내용과 비슷한 모임이 이미 있어요.</p>
+            <div id="recommendation-list" class="recommendation-list">
+                <!-- 추천 모임이 여기에 동적으로 추가됩니다. -->
+            </div>
+            <div class="modal-footer recommendation-footer">
+                <button id="force-create-meeting-btn" class="btn-primary">그냥 새로 만들게요</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/navbar.js"></script>
     <script>
         const currentUserId = '<?php echo $current_user_id; ?>';
@@ -249,6 +263,66 @@ try {
                     closeModal(modal);
                 }
             });
+        });
+
+        // --- 추천 모달 기능 ---
+        const recommendationModal = document.getElementById('recommendation-modal');
+        const createMeetingForm = document.getElementById('create-meeting-form');
+        const forceCreateBtn = document.getElementById('force-create-meeting-btn');
+
+        createMeetingForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // 기본 폼 제출 방지
+
+            const formData = new FormData(this);
+
+            fetch('check_similar_meetings.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                    this.submit(); // 에러 발생 시 그냥 생성
+                } else if (data.length > 0) {
+                    // 비슷한 모임이 있을 경우 추천 모달 표시
+                    const recommendationList = document.getElementById('recommendation-list');
+                    recommendationList.innerHTML = ''; // 기존 목록 초기화
+
+                    data.forEach(meeting => {
+                        const item = document.createElement('div');
+                        item.className = 'recommendation-item';
+                        item.innerHTML = `
+                            <img src="../${meeting.image_path || 'assets/default_image.png'}" alt="${meeting.title}" class="recommendation-item-img">
+                            <div class="recommendation-item-info">
+                                <h4>${meeting.title}</h4>
+                                <p>${meeting.description.substring(0, 50)}...</p>
+                                <p>👥 ${meeting.current_members} / ${meeting.max_members}명</p>
+                            </div>
+                            <form action="join_meeting.php" method="POST">
+                                <input type="hidden" name="meeting_id" value="${meeting.id}">
+                                <button type="submit" class="btn-primary">참여하기</button>
+                            </form>
+                        `;
+                        recommendationList.appendChild(item);
+                    });
+
+                    closeModal(createModal);
+                    openModal(recommendationModal);
+                } else {
+                    // 비슷한 모임이 없으면 바로 생성
+                    this.submit();
+                }
+            })
+            .catch(error => {
+                console.error('Error checking for similar meetings:', error);
+                this.submit(); // 에러 발생 시 그냥 생성
+            });
+        });
+
+        // "그냥 새로 만들게요" 버튼 클릭 시
+        forceCreateBtn.addEventListener('click', () => {
+            createMeetingForm.submit();
         });
 
         // --- 상세보기 기능 ---
