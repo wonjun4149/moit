@@ -460,9 +460,22 @@ body {
 }
 
 .modal-details-participants li {
-    padding: 8px 0;
-    border-bottom: 1px solid #f5f5f5;
+    padding: 10px 5px;
+    border-bottom: 1px solid #f0f0f0;
     color: #555;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05em;
+}
+
+.modal-details-participants li:before {
+    content: '👤'; /* User icon */
+    font-size: 1.2em;
+}
+
+.modal-details-participants li:first-child:before {
+    content: '👑'; /* Crown for organizer */
 }
 
 .modal-details-participants li:last-child {
