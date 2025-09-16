@@ -290,17 +290,22 @@ debug_output("최종 상태", [
                 <?php if (empty($recommendations)): ?>
                     <!-- 설문조사 폼 -->
                     <div class="survey-container">
+                        <div class="survey-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                            <span class="progress-text" id="progressText">1 / 15</span>
+                        </div>
+
+                        <h2>당신의 취향을 알려주세요</h2>
+                        <p class="survey-subtitle">15개 질문으로 딱 맞는 취미를 찾아드릴게요!</p>
+
                         <form method="POST" class="survey-form" id="surveyForm">
                             <?php if ($debug_mode): ?>
                                 <input type="hidden" name="debug" value="1">
                             <?php endif; ?>
 
-                            <!-- Part 1: 기본 정보 -->
-                            <div class="survey-part">
-                                <h3>Part 1. 기본 정보 설정하기</h3>
-                                <p class="part-subtitle">추천의 정확도를 높이기 위한 기본적인 정보예요.</p>
-                                
-                                <?php
+                            <?php
                                 $part1_questions = [
                                     ['name' => 'age_group', 'label' => '1. 연령대를 선택해 주세요.', 'options' => ['10대', '20대', '30대', '40대', '50대 이상']],
                                     ['name' => 'gender', 'label' => '2. 성별을 선택해 주세요.', 'options' => ['남성', '여성', '선택 안 함']],
@@ -343,31 +348,53 @@ debug_output("최종 상태", [
                                     ['name' => 'q14_generalist', 'label' => '14. 하나의 취미를 깊게 파고드는 전문가가 되기보다, 다양한 분야를 경험해보는 제너럴리스트가 되고 싶습니다.'],
                                     ['name' => 'q15_process_oriented', 'label' => '15. 이 취미를 통해 \'무엇을 얻을 수 있는가\'보다 \'그 순간이 얼마나 즐거운가\'가 더 중요합니다.'],
                                 ];
-                                ?>
 
-                                <?php foreach ($part2_questions as $q): ?>
-                                <div class="question-group-likert">
-                                    <label class="question-label-likert"><?php echo $q['label']; ?></label>
-                                    <div class="likert-scale">
-                                        <span class="likert-label-left">전혀 그렇지 않다</span>
-                                        <div class="likert-options">
-                                            <?php for ($i = 1; $i <= 5; $i++): ?>
-                                            <label class="likert-option">
-                                                <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $i; ?>" required>
-                                                <span class="likert-radio-button"></span>
-                                                <span class="likert-number"><?php echo $i; ?></span>
-                                            </label>
-                                            <?php endfor; ?>
+                                $all_questions = array_merge(
+                                    array_map(fn($q) => array_merge($q, ['type' => 'radio']), $part1_questions),
+                                    array_map(fn($q) => array_merge($q, ['type' => 'likert']), $part2_questions)
+                                );
+                            ?>
+
+                            <?php foreach ($all_questions as $index => $q): ?>
+                                <div class="question-step <?php echo $index === 0 ? 'active' : ''; ?>" data-step="<?php echo $index + 1; ?>">
+                                    <?php if ($q['type'] === 'radio'): ?>
+                                        <div class="question-group">
+                                            <label class="question-label"><?php echo $q['label']; ?></label>
+                                            <div class="option-group-inline">
+                                                <?php foreach ($q['options'] as $opt): ?>
+                                                <label class="option-label-inline">
+                                                    <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $opt; ?>" required>
+                                                    <span><?php echo $opt; ?></span>
+                                                </label>
+                                                <?php endforeach; ?>
+                                            </div>
                                         </div>
-                                        <span class="likert-label-right">매우 그렇다</span>
-                                    </div>
+                                    <?php elseif ($q['type'] === 'likert'): ?>
+                                        <div class="question-group-likert">
+                                            <label class="question-label-likert"><?php echo $q['label']; ?></label>
+                                            <div class="likert-scale">
+                                                <span class="likert-label-left">전혀 그렇지 않다</span>
+                                                <div class="likert-options">
+                                                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                    <label class="likert-option">
+                                                        <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $i; ?>" required>
+                                                        <span class="likert-radio-button"></span>
+                                                        <span class="likert-number"><?php echo $i; ?></span>
+                                                    </label>
+                                                    <?php endfor; ?>
+                                                </div>
+                                                <span class="likert-label-right">매우 그렇다</span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
-                                <?php endforeach; ?>
-                            </div>
+                            <?php endforeach; ?>
 
                             <!-- 버튼 영역 -->
                             <div class="survey-buttons">
-                                <button type="submit" name="submit_survey" class="submit-btn" id="submitBtn">취미 추천받기</button>
+                                <button type="button" class="btn-prev" id="prevBtn" style="display: none;">이전</button>
+                                <button type="button" class="btn-next" id="nextBtn">다음</button>
+                                <button type="submit" name="submit_survey" class="submit-btn" id="submitBtn" style="display: none;">취미 추천받기</button>
                             </div>
                         </form>
                     </div>
@@ -429,44 +456,86 @@ debug_output("최종 상태", [
     <script src="/js/navbar.js"></script>
     <script>
         const surveyForm = document.getElementById('surveyForm');
-        const submitBtn = document.getElementById('submitBtn');
+        if (surveyForm) {
+            let currentStep = 1;
+            const totalSteps = 15;
 
-        surveyForm?.addEventListener('submit', function(e) {
-            e.preventDefault();
+            const questionSteps = document.querySelectorAll('.question-step');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const submitBtn = document.getElementById('submitBtn');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
 
-            let allAnswered = true;
-            const radioGroups = {};
+            updateStepDisplay();
+            updateProgress();
 
-            // 모든 라디오 버튼 그룹을 찾습니다.
-            surveyForm.querySelectorAll('input[type="radio"]').forEach(radio => {
-                if (!radioGroups[radio.name]) {
-                    radioGroups[radio.name] = false;
+            prevBtn.addEventListener('click', function() {
+                if (currentStep > 1) {
+                    currentStep--;
+                    updateStepDisplay();
+                    updateProgress();
                 }
             });
 
-            // 각 그룹이 체크되었는지 확인합니다.
-            for (const name in radioGroups) {
-                if (surveyForm.querySelector(`input[name="${name}"]:checked`)) {
-                    radioGroups[name] = true;
+            nextBtn.addEventListener('click', function() {
+                if (validateCurrentStep()) {
+                    if (currentStep < totalSteps) {
+                        currentStep++;
+                        updateStepDisplay();
+                        updateProgress();
+                    }
                 } else {
-                    allAnswered = false;
-                    const questionLabel = surveyForm.querySelector(`input[name="${name}"]`).closest('.question-group, .question-group-likert');
-                    questionLabel?.classList.add('unanswered'); // 미답변 질문 강조
+                    alert('답변을 선택해주세요.');
+                }
+            });
+
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (validateCurrentStep()) {
+                    submitBtn.textContent = '분석 중...';
+                    submitBtn.disabled = true;
+                    surveyForm.submit();
+                } else {
+                    alert('마지막 질문에 답변해주세요.');
+                }
+            });
+
+            function updateStepDisplay() {
+                questionSteps.forEach(step => step.classList.remove('active'));
+                const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
+                if (currentQuestionStep) currentQuestionStep.classList.add('active');
+
+                prevBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
+                
+                if (currentStep === totalSteps) {
+                    nextBtn.style.display = 'none';
+                    submitBtn.style.display = 'inline-block';
+                } else {
+                    nextBtn.style.display = 'inline-block';
+                    submitBtn.style.display = 'none';
                 }
             }
 
-            if (allAnswered) {
-                submitBtn.textContent = '분석 중...';
-                submitBtn.disabled = true;
-                surveyForm.submit();
-            } else {
-                alert('모든 질문에 답변해주세요. 답변하지 않은 질문이 표시됩니다.');
-                const firstUnanswered = document.querySelector('.unanswered');
-                if(firstUnanswered) {
-                    firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+            function updateProgress() {
+                const progress = (currentStep / totalSteps) * 100;
+                if (progressFill) progressFill.style.width = progress + '%';
+                if (progressText) progressText.textContent = `${currentStep} / ${totalSteps}`;
+            }
+
+            function validateCurrentStep() {
+                const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
+                if (!currentQuestionStep) return false;
+
+                const radioInput = currentQuestionStep.querySelector('input[type="radio"]');
+                if (!radioInput) return false;
+
+                const radioName = radioInput.name;
+                const checkedRadio = currentQuestionStep.querySelector(`input[name="${radioName}"]:checked`);
+                return checkedRadio !== null;
             }
         }
+
 
         function loadMeetups(hobbyId) {
             window.location.href = `hobby_recommendation.php?hobby_id=${hobbyId}`;
