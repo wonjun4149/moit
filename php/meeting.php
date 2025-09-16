@@ -171,6 +171,12 @@ try {
                     <span>👥 인원: <strong id="modal-details-members"></strong></span>
                     <span>👤 개설자: <strong id="modal-details-organizer"></strong></span>
                 </div>
+                <div class="modal-details-participants">
+                    <h4>참여자 목록</h4>
+                    <ul id="modal-details-participants-list">
+                        <!-- 참여자 닉네임이 여기에 동적으로 추가됩니다. -->
+                    </ul>
+                </div>
             </div>
             <div class="modal-footer" id="modal-details-footer">
                 <!-- 버튼이 동적으로 여기에 추가됩니다. -->
@@ -314,6 +320,32 @@ try {
             }
             
             openModal(detailsModal);
+
+            // 참여자 목록 가져오기
+            const participantsList = document.getElementById('modal-details-participants-list');
+            participantsList.innerHTML = '<li>목록을 불러오는 중...</li>'; // 로딩 표시
+
+            fetch(`get_participants.php?meeting_id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    participantsList.innerHTML = ''; // 기존 목록 초기화
+                    if (data.error) {
+                        participantsList.innerHTML = '<li>참여자 정보를 가져오는데 실패했습니다.</li>';
+                        console.error(data.error);
+                    } else if (data.length > 0) {
+                        data.forEach(participant => {
+                            const li = document.createElement('li');
+                            li.textContent = participant;
+                            participantsList.appendChild(li);
+                        });
+                    } else {
+                        participantsList.innerHTML = '<li>아직 참여자가 없습니다.</li>';
+                    }
+                })
+                .catch(error => {
+                    participantsList.innerHTML = '<li>참여자 정보를 가져오는데 실패했습니다.</li>';
+                    console.error('Error fetching participants:', error);
+                });
         });
 
 
