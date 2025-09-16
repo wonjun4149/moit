@@ -315,26 +315,6 @@ debug_output("최종 상태", [
                                 ];
                                 ?>
 
-                                <?php foreach ($part1_questions as $q): ?>
-                                <div class="question-group">
-                                    <label class="question-label"><?php echo $q['label']; ?></label>
-                                    <div class="option-group-inline">
-                                        <?php foreach ($q['options'] as $opt): ?>
-                                        <label class="option-label-inline">
-                                            <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $opt; ?>" required>
-                                            <span><?php echo $opt; ?></span>
-                                        </label>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-
-                            <!-- Part 2: 스타일 -->
-                            <div class="survey-part">
-                                <h3>Part 2. 당신의 스타일 알아보기</h3>
-                                <p class="part-subtitle">정답은 없으니, 가장 가깝다고 생각하는 곳에 편하게 체크해 주세요.</p>
-
                                 <?php
                                 $part2_questions = [
                                     ['name' => 'q6_introversion', 'label' => '6. 새로운 사람들과 어울리기보다, 혼자 또는 가까운 친구와 깊이 있는 시간을 보내는 것을 선호합니다.'],
@@ -354,6 +334,17 @@ debug_output("최종 상태", [
                                     array_map(fn($q) => array_merge($q, ['type' => 'likert']), $part2_questions)
                                 );
                             ?>
+
+                            <!-- Part 1 Header -->
+                            <div id="part1-header" class="survey-part-header" style="display: none;">
+                                <h3>Part 1. 기본 정보 설정하기</h3>
+                                <p class="part-subtitle">추천의 정확도를 높이기 위한 기본적인 정보예요.</p>
+                            </div>
+                            <!-- Part 2 Header -->
+                            <div id="part2-header" class="survey-part-header" style="display: none;">
+                                <h3>Part 2. 당신의 스타일 알아보기</h3>
+                                <p class="part-subtitle">정답은 없으니, 가장 가깝다고 생각하는 곳에 편하게 체크해 주세요.</p>
+                            </div>
 
                             <?php foreach ($all_questions as $index => $q): ?>
                                 <div class="question-step <?php echo $index === 0 ? 'active' : ''; ?>" data-step="<?php echo $index + 1; ?>">
@@ -467,6 +458,9 @@ debug_output("최종 상태", [
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
 
+            const part1Header = document.getElementById('part1-header');
+            const part2Header = document.getElementById('part2-header');
+
             updateStepDisplay();
             updateProgress();
 
@@ -505,6 +499,16 @@ debug_output("최종 상태", [
                 questionSteps.forEach(step => step.classList.remove('active'));
                 const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
                 if (currentQuestionStep) currentQuestionStep.classList.add('active');
+
+                // 파트 헤더 표시 로직
+                if (currentStep >= 1 && currentStep <= 5) {
+                    part1Header.style.display = 'block';
+                    part2Header.style.display = 'none';
+                } else if (currentStep >= 6) {
+                    part1Header.style.display = 'none';
+                    part2Header.style.display = 'block';
+                }
+
 
                 prevBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
                 

@@ -68,16 +68,16 @@ body {
     margin-bottom: 30px;
 }
 
-.survey-part {
-    margin-bottom: 40px;
+.survey-part-header {
+    margin-bottom: 25px;
 }
 
-.survey-part h3 {
+.survey-part-header h3 {
     font-size: 24px;
     margin-bottom: 8px;
 }
 
-.part-subtitle {
+.survey-part-header .part-subtitle {
     color: #666;
     margin-bottom: 25px;
 }
