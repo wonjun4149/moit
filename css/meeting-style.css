@@ -316,15 +316,15 @@ body {
 }
 
 .modal-content {
-    background-color: #ffffff;
+    background: white;
     padding: 30px;
     border-radius: 15px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-    width: 90%;
     max-width: 600px;
+    width: 90%;
     position: relative;
-    max-height: 90vh; /* Limit height for scrollability */
-    overflow-y: auto; /* Enable scrolling for long content */
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
 }
 
 .modal-close-btn {
@@ -337,7 +337,6 @@ body {
     color: #aaa;
     cursor: pointer;
     line-height: 1;
-    padding: 0;
 }
 
 .modal-close-btn:hover {
@@ -410,6 +409,11 @@ body {
     object-fit: cover;
     border-radius: 10px;
     margin-bottom: 20px;
+}
+
+.modal-body p { 
+    margin-bottom: 20px; 
+    color: #7f8c8d; 
 }
 
 .modal-details-info {
