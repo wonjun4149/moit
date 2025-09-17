@@ -310,7 +310,7 @@ debug_output("최종 상태", [
                                         <?php endforeach; ?>
                                     </div>
                                     <div class="hobby-score">
-                                        <span>추천도: <?php echo round($hobby['score'] * 100); ?>%</span>
+                                        <span>추천도: <?php echo round($hobby['score']); ?>%</span>
                                     </div>
                                 </div>
                             <?php endforeach; ?>

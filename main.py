@@ -1,4 +1,4 @@
-# main.py (진짜 최종 완성본 - 모든 프롬프트 복원 및 가독성 개선 + 로깅 적용)
+# main.py (진짜 최종 완성본 - Self-RAG 루프 오류 수정 및 모든 내용 복원)
 
 # --- 1. 기본 라이브러리 import ---
 from fastapi import FastAPI, HTTPException
@@ -12,7 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging # 로깅 라이브러리 추가
 
 # --- 2. 로깅 기본 설정 ---
-# 로그 레벨을 INFO로 설정하고, 출력 형식을 Uvicorn과 유사하게 맞춥니다.
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(message)s')
 
 # --- 3. LangChain 및 LangGraph 관련 라이브러리 import ---
@@ -34,15 +33,14 @@ app = FastAPI(
 )
 
 # --- CORS 미들웨어 추가 ---
-# 웹 브라우저에서 오는 요청(예: 취미 추천 설문)을 허용하기 위해 필요합니다.
-origins = ["*"] # 모든 출처에서의 요청을 허용 (개발 환경용)
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # 모든 HTTP 메소드 허용
-    allow_headers=["*"], # 모든 HTTP 헤더 허용
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -100,13 +98,21 @@ def call_meeting_matching_agent(state: MasterAgentState):
     
     embedding_function = OpenAIEmbeddings(model='text-embedding-3-large')
     vector_store = PineconeVectorStore.from_existing_index(index_name=meeting_index_name, embedding=embedding_function)
-    retriever = vector_store.as_retriever(search_kwargs={'k': 2})
+    # [수정!] 유사도 점수 임계값을 설정하여 관련성 높은 문서만 가져옵니다.
+    retriever = vector_store.as_retriever(
+        search_type="similarity_score_threshold",
+        search_kwargs={'score_threshold': 0.75, 'k': 2}
+    )  
 
     # SubGraph의 노드들을 정의합니다. (프롬프트 복원)
     prepare_query_prompt = ChatPromptTemplate.from_template(
-        "당신은 사용자가 입력한 정보를 바탕으로 유사한 다른 정보를 검색하기 위한 최적의 검색어를 만드는 전문가입니다.\n"
-        "아래 [모임 정보]를 종합하여, 벡터 데이터베이스에서 유사한 모임을 찾기 위한 가장 핵심적인 검색 질문을 한 문장으로 만들어주세요.\n"
-        "[모임 정보]:\n- 제목: {title}\n- 설명: {description}\n- 시간: {time}\n- 장소: {location}"
+        """당신은 사용자가 입력한 정보를 바탕으로 유사한 다른 정보를 검색하기 위한 최적의 검색어를 만드는 전문가입니다.
+        아래 [모임 정보]를 종합하여, 벡터 데이터베이스에서 유사한 모임을 찾기 위한 가장 핵심적인 검색 질문을 한 문장으로 만들어주세요.
+        [모임 정보]:
+- 제목: {title}
+- 설명: {description}
+- 시간: {time}
+- 장소: {location}"""
     )
     prepare_query_chain = prepare_query_prompt | meeting_llm | StrOutputParser()
     def prepare_query(m_state: MeetingAgentState):
@@ -121,31 +127,79 @@ def call_meeting_matching_agent(state: MasterAgentState):
         logging.info(f"DB에서 {len(context)}개의 유사 문서를 찾았습니다.")
         return {"context": context}
 
+    # [최종 추천 프롬프트]
     generate_prompt = ChatPromptTemplate.from_template(
-        "당신은 MOIT 플랫폼의 친절한 모임 추천 AI입니다. 사용자에게 \"혹시 이런 모임은 어떠세요?\" 라고 제안하는 말투로, "
-        "반드시 아래 [검색된 정보]를 기반으로 유사한 모임이 있다는 것을 명확하게 설명해주세요.\n[검색된 정보]:\n{context}\n[사용자 질문]:\n{query}"
+        """당신은 사용자의 요청을 매우 엄격하게 분석하여 유사한 모임을 추천하는 MOIT 플랫폼의 AI입니다.
+        사용자가 만들려는 모임과 **주제, 활동 내용이 명확하게 일치하는** 기존 모임만 추천해야 합니다.
+
+        [사용자 입력 정보]:
+        {query}
+
+        [검색된 유사 모임 정보]:
+        {context}
+
+        [지시사항]:
+        1. [검색된 유사 모임 정보]의 각 항목을 [사용자 입력 정보]와 비교하여, **정말로 관련성이 높다고 판단되는 모임만** 골라냅니다. (예: '축구' 모임을 찾는 사용자에게 '야구' 모임은 추천하지 않습니다.)
+        2. 1번에서 골라낸 모임이 있다면, 해당 모임을 기반으로 사용자에게 제안할 추천사를 친절한 말투("~는 어떠세요?")로 작성합니다.
+        3. 1번에서 골라낸 모임의 `meeting_id`와 `title`을 추출하여 `recommendations` 배열을 구성합니다. **추천할 모임이 하나뿐이라면, 배열에 하나만 포함합니다.**
+        4. 최종 답변을 아래와 같은 JSON 형식으로만 제공해주세요. 다른 텍스트는 절대 포함하지 마세요.
+
+        [JSON 출력 형식 예시]:
+        // 추천할 모임이 1개일 경우
+        {{
+            "summary": "비슷한 축구 모임이 있는데, 참여해 보시는 건 어떠세요?",
+            "recommendations": [
+                {{ "meeting_id": "축구 모임 ID", "title": "같이 축구하실 분!" }}
+            ]
+        }}
+
+        // 1번에서 골라낸 모임이 없을 경우 (추천할 만한 모임이 없는 경우)
+        {{
+            "summary": "",
+            "recommendations": []
+        }}
+        """
     )
     generate_chain = generate_prompt | meeting_llm | StrOutputParser()
     def generate(m_state: MeetingAgentState):
         logging.info("--- (Sub) Generating Final Answer ---")
-        context = "\n\n".join(doc.page_content for doc in m_state['context'])
-        answer = generate_chain.invoke({"context": context, "query": m_state['query']})
+        context_str = ""
+        for i, doc in enumerate(m_state['context']):
+            metadata = doc.metadata or {}
+            meeting_id = metadata.get('meeting_id', 'N/A')
+            title = metadata.get('title', 'N/A')
+            context_str += f"모임 {i+1}:\n  - meeting_id: {meeting_id}\n  - title: {title}\n  - content: {doc.page_content}\n\n"
+        if not m_state['context']: context_str = "유사한 모임을 찾지 못했습니다."
+        answer = generate_chain.invoke({"context": context_str, "query": m_state['query']})
         return {"answer": answer}
 
+    # [수정!] LLM이 한 단어로만 답하도록 프롬프트를 강화합니다.
     check_helpfulness_prompt = ChatPromptTemplate.from_template(
-        "당신은 AI 답변을 평가하는 엄격한 평가관입니다. 주어진 [AI 답변]이 사용자의 [원본 질문] 의도에 대해 유용한 제안을 하는지 평가해주세요. "
-        "'helpful' 또는 'unhelpful' 둘 중 하나로만 답변해야 합니다.\n[원본 질문]: {query}\n[AI 답변]: {answer}"
+        """당신은 AI 답변을 평가하는 엄격한 평가관입니다. 주어진 [AI 답변]이 사용자의 [원본 질문] 의도에 대해 유용한 제안을 하는지 평가해주세요.
+        다른 설명은 일절 추가하지 말고, 오직 'helpful' 또는 'unhelpful' 둘 중 하나의 단어로만 답변해야 합니다.
+
+        [원본 질문]: {query}
+        [AI 답변]: {answer}
+        
+        [평가 결과 (helpful 또는 unhelpful)]:"""
     )
     check_helpfulness_chain = check_helpfulness_prompt | meeting_llm | StrOutputParser()
     def check_helpfulness(m_state: MeetingAgentState):
         logging.info("--- (Sub) Checking Helpfulness ---")
-        result = check_helpfulness_chain.invoke({"query": m_state['query'], "answer": m_state['answer']})
-        logging.info(f"답변 유용성 평가: {result}")
-        return {"decision": "helpful" if 'helpful' in result.lower() else "unhelpful"}
+        raw_result = check_helpfulness_chain.invoke({"query": m_state['query'], "answer": m_state['answer']})
+        
+        # [수정!] 더 안전한 파싱 로직과 명확한 로깅
+        cleaned_result = raw_result.strip().lower().replace('"', '').replace("'", "")
+        decision = "helpful" if cleaned_result == "helpful" else "unhelpful"
+        
+        logging.info(f"답변 유용성 평가 (Raw): {raw_result} -> (Parsed): {decision}")
+        return {"decision": decision}
 
     rewrite_query_prompt = ChatPromptTemplate.from_template(
-        "당신은 사용자의 질문을 더 좋은 검색 결과가 나올 수 있도록 명확하게 다듬는 프롬프트 엔지니어입니다. 주어진 [원본 질문]을 바탕으로, "
-        "벡터 데이터베이스에서 더 관련성 높은 모임 정보를 찾을 수 있는 새로운 검색 질문을 하나만 만들어주세요.\n[원본 질문]: {query}"
+        """당신은 더 나은 검색 결과를 위해 질문을 재구성하는 프롬프트 엔지니어입니다.
+        [원본 질문]은 벡터 검색에서 좋은 결과를 얻지 못했습니다. 원본 질문의 핵심 의도는 유지하되, 완전히 다른 관점에서 접근하거나, 더 구체적인 키워드를 사용하여 관련성 높은 모임을 찾을 수 있는 새로운 검색 질문을 하나만 만들어주세요.
+        [원본 질문]: {query}
+        [새로운 검색 질문]:"""
     )
     rewrite_query_chain = rewrite_query_prompt | meeting_llm | StrOutputParser()
     def rewrite_query(m_state: MeetingAgentState):
@@ -155,32 +209,28 @@ def call_meeting_matching_agent(state: MasterAgentState):
         count = m_state.get('rewrite_count', 0) + 1
         return {"query": new_query, "rewrite_count": count}
     
-    # SubGraph를 조립합니다.
+    def decide_to_continue(state: MeetingAgentState):
+        if state.get("rewrite_count", 0) >= 2: 
+            logging.info(f"--- 재시도 횟수({state.get('rewrite_count', 0)}) 초과, 루프를 종료합니다. ---")
+            return END
+        if state.get("decision") == "helpful":
+            return END
+        return "rewrite_query"
+    
     graph_builder = StateGraph(MeetingAgentState)
-
     graph_builder.add_node("prepare_query", prepare_query)
     graph_builder.add_node("retrieve", retrieve)
     graph_builder.add_node("generate", generate)
     graph_builder.add_node("check_helpfulness", check_helpfulness)
     graph_builder.add_node("rewrite_query", rewrite_query)
-    
     graph_builder.set_entry_point("prepare_query")
-    
     graph_builder.add_edge("prepare_query", "retrieve")
     graph_builder.add_edge("retrieve", "generate")
     graph_builder.add_edge("generate", "check_helpfulness")
-    
-    graph_builder.add_conditional_edges(
-        "check_helpfulness", 
-        lambda state: state['decision'], 
-        {"helpful": END, "unhelpful": "rewrite_query"}
-    )
-    
+    graph_builder.add_conditional_edges("check_helpfulness", decide_to_continue)
     graph_builder.add_edge("rewrite_query", "retrieve")
-    
     meeting_agent = graph_builder.compile()
 
-    # 마스터 에이전트로부터 받은 정보로 SubGraph를 실행합니다.
     user_input = state['user_input']
     initial_state = {
         "title": user_input.get("title", ""), "description": user_input.get("description", ""),
@@ -188,10 +238,18 @@ def call_meeting_matching_agent(state: MasterAgentState):
         "rewrite_count": 0
     }
     
-    final_result_state = meeting_agent.invoke(initial_state)
-    final_answer = final_result_state.get("answer", "유사한 모임을 찾지 못했습니다.")
-    
-    return {"final_answer": final_answer}
+    final_result_state = meeting_agent.invoke(initial_state, {"recursion_limit": 15})
+
+    final_decision = final_result_state.get("decision")
+    final_answer = final_result_state.get("answer")
+
+    if final_decision == 'helpful':
+        logging.info("--- 최종 결정이 'helpful'이므로, 생성된 추천안을 반환합니다. ---")
+        return {"final_answer": final_answer}
+    else:
+        logging.info("--- 최종 결정이 'helpful'이 아니므로, 신규 생성을 유도하기 위해 빈 추천안을 반환합니다. ---")
+        empty_recommendation = json.dumps({"summary": "", "recommendations": []})
+        return {"final_answer": empty_recommendation}
 
 
 # 전문가 2: 취미 추천 에이전트 (Tool)
@@ -209,7 +267,6 @@ def call_hobby_recommendation_agent(state: MasterAgentState):
         if not recommendations:
             final_answer = "아쉽지만 현재 조건에 맞는 취미를 찾지 못했어요."
         else:
-            # PHP 클라이언트가 파싱할 수 있도록 순수한 JSON 문자열을 반환합니다.
             top3 = recommendations[:3]
             final_answer = json.dumps(top3, ensure_ascii=False)
             
@@ -250,9 +307,12 @@ class UserRequest(BaseModel):
 async def invoke_agent(request: UserRequest):
     try:
         input_data = {"user_input": request.user_input}
-        result = master_agent.invoke(input_data)
+        result = master_agent.invoke(input_data, {"recursion_limit": 5}) # 마스터 에이전트에도 안전장치 추가
+        # AI의 답변이 이미 JSON 문자열일 수 있으므로, 그대로 반환하거나 파싱해서 재구성할 수 있습니다.
+        # 여기서는 백엔드와의 약속에 따라 그대로 반환하는 것이 안전합니다.
         return {"final_answer": result.get("final_answer", "오류: 최종 답변을 생성하지 못했습니다.")}
     except Exception as e:
+        logging.error(f"Agent 실행 중 오류 발생: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="AI 에이전트 처리 중 내부 서버 오류가 발생했습니다.")
 
 
@@ -267,6 +327,7 @@ class NewMeeting(BaseModel):
 @app.post("/meetings/add")
 async def add_meeting_to_pinecone(meeting: NewMeeting):
     try:
+        logging.info(f"--- Pinecone에 새로운 모임 추가 시작 (ID: {meeting.meeting_id}) ---")
         meeting_index_name = os.getenv("PINECONE_INDEX_NAME_MEETING")
         if not meeting_index_name: raise ValueError("'.env' 파일에 PINECONE_INDEX_NAME_MEETING이(가) 설정되지 않았습니다.")
         
@@ -274,10 +335,39 @@ async def add_meeting_to_pinecone(meeting: NewMeeting):
         vector_store = PineconeVectorStore.from_existing_index(index_name=meeting_index_name, embedding=embedding_function)
         
         full_text = f"제목: {meeting.title}\n설명: {meeting.description}\n시간: {meeting.time}\n장소: {meeting.location}"
-        metadata = {"title": meeting.title, "description": meeting.description, "time": meeting.time, "location": meeting.location}
+        # [수정!] Pinecone 메타데이터에 meeting_id를 필수로 포함
+        metadata = {
+            "title": meeting.title, 
+            "description": meeting.description, 
+            "time": meeting.time, 
+            "location": meeting.location,
+            "meeting_id": meeting.meeting_id 
+        }
         
         vector_store.add_texts(texts=[full_text], metadatas=[metadata], ids=[meeting.meeting_id])
         
+        logging.info(f"--- Pinecone에 모임 추가 성공 (ID: {meeting.meeting_id}) ---")
         return {"status": "success", "message": f"모임(ID: {meeting.meeting_id})이 성공적으로 추가되었습니다."}
     except Exception as e:
+        logging.error(f"Pinecone 업데이트 중 오류 발생: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Pinecone에 모임을 추가하는 중 오류가 발생했습니다: {str(e)}")
+
+
+# 6-3. Pinecone DB 삭제 엔드포인트
+@app.delete("/meetings/delete/{meeting_id}")
+async def delete_meeting_from_pinecone(meeting_id: str):
+    try:
+        logging.info(f"--- Pinecone에서 모임 삭제 시작 (ID: {meeting_id}) ---")
+        meeting_index_name = os.getenv("PINECONE_INDEX_NAME_MEETING")
+        if not meeting_index_name: raise ValueError("'.env' 파일에 PINECONE_INDEX_NAME_MEETING이(가) 설정되지 않았습니다.")
+        
+        embedding_function = OpenAIEmbeddings(model='text-embedding-3-large')
+        vector_store = PineconeVectorStore.from_existing_index(index_name=meeting_index_name, embedding=embedding_function)
+        
+        vector_store.delete(ids=[meeting_id])
+        
+        logging.info(f"--- Pinecone에서 모임 삭제 성공 (ID: {meeting_id}) ---")
+        return {"status": "success", "message": f"모임(ID: {meeting_id})이 성공적으로 삭제되었습니다."}
+    except Exception as e:
+        logging.error(f"Pinecone 삭제 중 오류 발생: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Pinecone에서 모임을 삭제하는 중 오류가 발생했습니다: {str(e)}")

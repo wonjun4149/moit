@@ -30,7 +30,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['meeting_id'])) {
                 unlink('../' . $meeting['image_path']);
             }
 
-            // 6. 모임 목록 페이지로 리다이렉트
+            // 6. Pinecone DB에서 해당 모임 정보 삭제
+            $ch = curl_init();
+            // FastAPI 서버의 주소와 포트에 맞게 URL을 수정해야 합니다.
+            curl_setopt($ch, CURLOPT_URL, "http://127.0.0.1:8000/meetings/delete/" . $meeting_id);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $response = curl_exec($ch);
+            $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            // 7. 모임 목록 페이지로 리다이렉트
             redirect('meeting.php');
 
         } else {
