@@ -83,29 +83,35 @@ CREATE TABLE IF NOT EXISTS hobby_recommendations (
     INDEX idx_score (recommendation_score)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='취미 추천 기록 테이블';
 
--- 모임 모집 공고 테이블
+-- 모임 모집 공고 테이블 (**수정된 부분**)
 CREATE TABLE IF NOT EXISTS meetings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(100) NOT NULL COMMENT '모집 제목',
     description TEXT NOT NULL COMMENT '모집 내용',
-    hobby_id INT NOT NULL,
+    -- [수정] PHP에서 'category'를 보내므로 hobby_id 대신 category 컬럼 추가
+    category VARCHAR(30) NOT NULL COMMENT '취미 카테고리', 
     organizer_id VARCHAR(50) NOT NULL,
     location VARCHAR(100) COMMENT '모임 장소',
-    meeting_date DATETIME COMMENT '모임 일시',
-    max_participants INT DEFAULT 10 COMMENT '최대 참여 인원',
+    -- [수정] PHP에서 날짜와 시간을 분리해서 보내므로 컬럼 분리
+    meeting_date DATE COMMENT '모임 날짜',
+    meeting_time TIME COMMENT '모임 시간',
+    -- [수정] PHP 변수명('max_members')과 컬럼명 일치
+    max_members INT DEFAULT 10 COMMENT '최대 참여 인원', 
     current_participants INT DEFAULT 1 COMMENT '현재 참여 인원',
     status ENUM('모집중', '모집완료', '진행중', '완료', '취소') DEFAULT '모집중',
     image_path VARCHAR(255) COMMENT '모임 대표 이미지 경로',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (hobby_id) REFERENCES hobbies(id) ON DELETE CASCADE,
+    -- [수정] hobby_id가 없어졌으므로 외래 키 제약 조건 제거
     FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_hobby_id (hobby_id),
     INDEX idx_organizer_id (organizer_id),
     INDEX idx_status (status),
     INDEX idx_meeting_date (meeting_date),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    -- [추가] category 컬럼 인덱스 추가
+    INDEX idx_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='모임 모집 공고 테이블';
+
 
 -- 모임 참여자 테이블
 CREATE TABLE IF NOT EXISTS meeting_participants (
@@ -137,8 +143,8 @@ INSERT IGNORE INTO hobbies (name, category, description, difficulty_level, activ
 
 -- 샘플 모집 공고 데이터 (테스트용)
 -- 실제 사용 시에는 organizer_id가 존재하는 사용자로 수정해야 합니다
--- INSERT IGNORE INTO meetings (title, description, hobby_id, organizer_id, location, meeting_date, max_participants) VALUES
--- ('주말 축구 모임 모집', '매주 토요일 오전 축구 모임에 참여하실 분들을 모집합니다.', 1, 'testuser', '서울 월드컵공원', '2024-12-15 10:00:00', 20);
+-- INSERT IGNORE INTO meetings (title, description, category, organizer_id, location, meeting_date, meeting_time, max_members) VALUES
+-- ('주말 축구 모임 모집', '매주 토요일 오전 축구 모임에 참여하실 분들을 모집합니다.', '운동', 'testuser', '서울 월드컵공원', '2024-12-15', '10:00:00', 20);
 
 -- 테스트 데이터 삽입 (선택사항)
 -- 비밀번호는 'test123'으로 해시화된 값입니다.

@@ -1,4 +1,4 @@
-# main.py (진짜 최종 완성본 - 모든 프롬프트 복원 및 가독성 개선)
+# main.py (진짜 최종 완성본 - 모든 프롬프트 복원 및 가독성 개선 + 로깅 적용)
 
 # --- 1. 기본 라이브러리 import ---
 from fastapi import FastAPI, HTTPException
@@ -9,8 +9,13 @@ import requests
 import json
 from typing import List, TypedDict, Optional
 from fastapi.middleware.cors import CORSMiddleware
+import logging # 로깅 라이브러리 추가
 
-# --- 2. LangChain 및 LangGraph 관련 라이브러리 import ---
+# --- 2. 로깅 기본 설정 ---
+# 로그 레벨을 INFO로 설정하고, 출력 형식을 Uvicorn과 유사하게 맞춥니다.
+logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(message)s')
+
+# --- 3. LangChain 및 LangGraph 관련 라이브러리 import ---
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -19,7 +24,7 @@ from langgraph.graph import StateGraph, END
 from langchain_core.documents import Document
 
 
-# --- 3. 환경 설정 ---
+# --- 4. 환경 설정 ---
 load_dotenv()
 
 app = FastAPI(
@@ -41,15 +46,15 @@ app.add_middleware(
 )
 
 
-# --- 4. 마스터 에이전트 로직 전체 정의 ---
+# --- 5. 마스터 에이전트 로직 전체 정의 ---
 
-# 4-1. 마스터 에이전트의 State(기억 상자) 정의
+# 5-1. 마스터 에이전트의 State(기억 상자) 정의
 class MasterAgentState(TypedDict):
     user_input: dict
     route: str
     final_answer: str
 
-# 4-2. 라우터 노드(지휘관의 두뇌) 정의
+# 5-2. 라우터 노드(지휘관의 두뇌) 정의
 llm = ChatOpenAI(model="gpt-4o-mini")
 
 routing_prompt = ChatPromptTemplate.from_template(
@@ -71,19 +76,19 @@ router_chain = routing_prompt | llm | StrOutputParser()
 
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
-    print("--- ROUTING ---")
+    logging.info("--- ROUTING ---")
     route_decision = router_chain.invoke({"user_input": state['user_input']})
     cleaned_decision = route_decision.strip().replace("'", "").replace('"', '')
-    print(f"라우팅 결정: {cleaned_decision}")
+    logging.info(f"라우팅 결정: {cleaned_decision}")
     return {"route": cleaned_decision}
 
 
-# 4-3. 전문가 호출 노드들 정의
+# 5-3. 전문가 호출 노드들 정의
 
 # 전문가 1: 모임 매칭 에이전트 (SubGraph)
 def call_meeting_matching_agent(state: MasterAgentState):
     """'모임 매칭 에이전트'를 독립적인 SubGraph로 실행하고 결과를 받아오는 노드"""
-    print("--- CALLING: Meeting Matching Agent ---")
+    logging.info("--- CALLING: Meeting Matching Agent ---")
     
     class MeetingAgentState(TypedDict):
         title: str; description: str; time: str; location: str; query: str;
@@ -105,11 +110,16 @@ def call_meeting_matching_agent(state: MasterAgentState):
     )
     prepare_query_chain = prepare_query_prompt | meeting_llm | StrOutputParser()
     def prepare_query(m_state: MeetingAgentState):
+        logging.info("--- (Sub) Preparing Query ---")
         query = prepare_query_chain.invoke({"title": m_state['title'], "description": m_state['description'], "time": m_state.get('time', ''), "location": m_state.get('location', '')})
+        logging.info(f"생성된 검색어: {query}")
         return {"query": query}
 
     def retrieve(m_state: MeetingAgentState):
-        return {"context": retriever.invoke(m_state['query'])}
+        logging.info("--- (Sub) Retrieving Context from DB ---")
+        context = retriever.invoke(m_state['query'])
+        logging.info(f"DB에서 {len(context)}개의 유사 문서를 찾았습니다.")
+        return {"context": context}
 
     generate_prompt = ChatPromptTemplate.from_template(
         "당신은 MOIT 플랫폼의 친절한 모임 추천 AI입니다. 사용자에게 \"혹시 이런 모임은 어떠세요?\" 라고 제안하는 말투로, "
@@ -117,6 +127,7 @@ def call_meeting_matching_agent(state: MasterAgentState):
     )
     generate_chain = generate_prompt | meeting_llm | StrOutputParser()
     def generate(m_state: MeetingAgentState):
+        logging.info("--- (Sub) Generating Final Answer ---")
         context = "\n\n".join(doc.page_content for doc in m_state['context'])
         answer = generate_chain.invoke({"context": context, "query": m_state['query']})
         return {"answer": answer}
@@ -127,7 +138,9 @@ def call_meeting_matching_agent(state: MasterAgentState):
     )
     check_helpfulness_chain = check_helpfulness_prompt | meeting_llm | StrOutputParser()
     def check_helpfulness(m_state: MeetingAgentState):
+        logging.info("--- (Sub) Checking Helpfulness ---")
         result = check_helpfulness_chain.invoke({"query": m_state['query'], "answer": m_state['answer']})
+        logging.info(f"답변 유용성 평가: {result}")
         return {"decision": "helpful" if 'helpful' in result.lower() else "unhelpful"}
 
     rewrite_query_prompt = ChatPromptTemplate.from_template(
@@ -136,7 +149,9 @@ def call_meeting_matching_agent(state: MasterAgentState):
     )
     rewrite_query_chain = rewrite_query_prompt | meeting_llm | StrOutputParser()
     def rewrite_query(m_state: MeetingAgentState):
+        logging.info("--- (Sub) Rewriting Query ---")
         new_query = rewrite_query_chain.invoke({"query": m_state['query']})
+        logging.info(f"재작성된 검색어: {new_query}")
         count = m_state.get('rewrite_count', 0) + 1
         return {"query": new_query, "rewrite_count": count}
     
@@ -182,7 +197,7 @@ def call_meeting_matching_agent(state: MasterAgentState):
 # 전문가 2: 취미 추천 에이전트 (Tool)
 def call_hobby_recommendation_agent(state: MasterAgentState):
     """'취미 추천 에이전트(API)'를 호출하고 결과를 받아오는 노드"""
-    print("--- CALLING: Hobby Recommendation Agent ---")
+    logging.info("--- CALLING: Hobby Recommendation Agent ---")
     
     url = "http://127.0.0.1:5000/recommend"
     
@@ -204,7 +219,7 @@ def call_hobby_recommendation_agent(state: MasterAgentState):
     return {"final_answer": final_answer}
 
 
-# 4-4. 마스터 에이전트 그래프 조립 및 컴파일
+# 5-4. 마스터 에이전트 그래프 조립 및 컴파일
 master_graph_builder = StateGraph(MasterAgentState)
 
 master_graph_builder.add_node("router", route_request)
@@ -225,9 +240,9 @@ master_graph_builder.add_edge("hobby_recommender", END)
 master_agent = master_graph_builder.compile()
 
 
-# --- 5. API 엔드포인트(주소) 정의 ---
+# --- 6. API 엔드포인트(주소) 정의 ---
 
-# 5-1. 메인 AI 요청 처리 엔드포인트
+# 6-1. 메인 AI 요청 처리 엔드포인트
 class UserRequest(BaseModel):
     user_input: dict
 
@@ -241,7 +256,7 @@ async def invoke_agent(request: UserRequest):
         raise HTTPException(status_code=500, detail="AI 에이전트 처리 중 내부 서버 오류가 발생했습니다.")
 
 
-# 5-2. Pinecone DB 업데이트 엔드포인트
+# 6-2. Pinecone DB 업데이트 엔드포인트
 class NewMeeting(BaseModel):
     meeting_id: str
     title: str
