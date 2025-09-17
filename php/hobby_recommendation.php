@@ -59,188 +59,83 @@ try {
     $error_message = '데이터를 불러오는 중 오류가 발생했습니다.';
 }
 
-// 설문 제출 처리 - 개선된 추천 알고리즘
+// 설문 제출 처리 - AI 에이전트 연동
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
-    debug_output("=== 설문 제출 처리 시작 ===");
+    debug_output("=== AI 에이전트 기반 추천 시작 ===");
     
     try {
-        // Part 1
-        $age_group = $_POST['age_group'] ?? '';
-        $gender = $_POST['gender'] ?? '';
-        $occupation = $_POST['occupation'] ?? '';
-        $weekly_time = $_POST['weekly_time'] ?? '';
-        $monthly_budget = $_POST['monthly_budget'] ?? '';
+        // 1. 설문 데이터 수집
+        $survey_data = $_POST; // POST 데이터를 그대로 사용
+        unset($survey_data['submit_survey']); // 불필요한 데이터 제거
+        if(isset($survey_data['debug'])) unset($survey_data['debug']);
 
-        // Part 2
-        $q6 = $_POST['q6_introversion'] ?? 0;
-        $q7 = $_POST['q7_openness'] ?? 0;
-        $q8 = $_POST['q8_planning'] ?? 0;
-        $q9 = $_POST['q9_creativity'] ?? 0;
-        $q10 = $_POST['q10_skill_oriented'] ?? 0;
-        $q11 = $_POST['q11_active_stress_relief'] ?? 0;
-        $q12 = $_POST['q12_monetization'] ?? 0;
-        $q13 = $_POST['q13_online_community'] ?? 0;
-        $q14 = $_POST['q14_generalist'] ?? 0;
-        $q15 = $_POST['q15_process_oriented'] ?? 0;
+        // 2. AI 에이전트에 보낼 데이터 구조 생성
+        $request_payload = [
+            'user_input' => [
+                'survey' => $survey_data,
+                'user_context' => [
+                    'user_id' => $_SESSION['user_id']
+                ]
+            ]
+        ];
+        debug_output("AI 서버 요청 데이터", $request_payload);
 
-        $part1_data = compact('age_group', 'gender', 'occupation', 'weekly_time', 'monthly_budget');
-        $part2_data = compact('q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12', 'q13', 'q14', 'q15');
-        
-        debug_output("설문 답변 (Part 1)", $part1_data);
-        debug_output("설문 답변 (Part 2)", $part2_data);
+        // 3. cURL을 사용해 AI 에이전트 API 호출
+        $ch = curl_init('http://127.0.0.1:8000/agent/invoke');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen(json_encode($request_payload))
+        ]);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // 연결 타임아웃 5초
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);      // 전체 실행 타임아웃 30초
 
-        // 필수 값 확인
-        $required_fields = array_merge($part1_data, $part2_data);
-        if (in_array('', $required_fields, true) || in_array(0, $part2_data, true)) {
-            debug_output("일부 답변 누락");
-            $error_message = '모든 질문에 답변해주세요.';
-        } else {
-            debug_output("모든 답변 완료 - 데이터베이스 저장 시작");
-            
-            // 설문 응답 저장
-            $sql = "INSERT INTO hobby_surveys (user_id, age_group, gender, occupation, weekly_time, monthly_budget, 
-                        q6_introversion, q7_openness, q8_planning, q9_creativity, q10_skill_oriented, 
-                        q11_active_stress_relief, q12_monetization, q13_online_community, q14_generalist, q15_process_oriented)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt = $pdo->prepare($sql);
-            
-            $params_db = array_merge([$_SESSION['user_id']], array_values($part1_data), array_values($part2_data));
-            $result = $stmt->execute($params_db);
-            $survey_id = $pdo->lastInsertId();
-            
-            debug_output("설문 저장 결과", "성공: " . ($result ? 'YES' : 'NO') . ", ID: $survey_id");
-            
-            if (!$result) {
-                throw new Exception("설문 저장에 실패했습니다.");
-            }
-            
-            // MVP 추천 알고리즘
-            debug_output("=== MVP 추천 알고리즘 시작 ===");
-            
-            $query = "
-                SELECT *, 
-                (
-                    -- 1. 활동성 (q11) vs physical_level (가중치: 0.3)
-                    (CASE
-                        WHEN physical_level = '높음' THEN ? -- q11
-                        WHEN physical_level = '보통' THEN 3
-                        WHEN physical_level = '낮음' THEN 6 - ? -- q11
-                    END) / 5 * 0.3 +
+        $response_body = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-                    -- 2. 그룹 크기 (q6) vs group_size (가중치: 0.25)
-                    (CASE
-                        WHEN group_size = '개인' THEN ? -- q6
-                        WHEN group_size = '소그룹' THEN ? -- q6
-                        WHEN group_size = '대그룹' THEN 6 - ? -- q6
-                        ELSE 3
-                    END) / 5 * 0.25 +
+        if (curl_errno($ch) || $http_code !== 200) {
+            $curl_error = curl_error($ch);
+            debug_output("cURL Error", ['message' => $curl_error, 'http_code' => $http_code, 'body' => $response_body]);
+            throw new Exception("AI 추천 서버와의 통신에 실패했습니다. (HTTP: {$http_code})");
+        }
+        curl_close($ch);
 
-                    -- 3. 비용 (monthly_budget) vs cost_level (가중치: 0.15)
-                    CASE 
-                        WHEN ? = '5만원 미만' AND cost_level IN ('무료', '저비용') THEN 0.15
-                        WHEN ? = '5~10만원' AND cost_level IN ('저비용', '중비용') THEN 0.15
-                        WHEN ? = '10~20만원' AND cost_level IN ('중비용', '고비용') THEN 0.15
-                        WHEN ? = '20만원 이상' AND cost_level = '고비용' THEN 0.15
-                        ELSE 0.05
-                    END +
+        debug_output("AI 서버 응답", json_decode($response_body, true));
 
-                    -- 4. 실력 향상 동기 (q10) vs difficulty_level (가중치: 0.15)
-                    (CASE
-                        WHEN difficulty_level = '고급' THEN ? -- q10
-                        WHEN difficulty_level = '중급' THEN 3
-                        WHEN difficulty_level = '초급' THEN 6 - ? -- q10
-                    END) / 5 * 0.15 +
-
-                    -- 5. 독창성 (q9) vs category (가중치: 0.15)
-                    (CASE
-                        WHEN category IN ('예술', '생활', '취미') THEN ? -- q9
-                        WHEN category IN ('운동', '학습') THEN 6 - ? -- q9
-                        ELSE 3
-                    END) / 5 * 0.15
-                ) as score
-                FROM hobbies 
-                HAVING score > 0
-                ORDER BY score DESC, name ASC
-                LIMIT 6
-            ";
-
-            $params = [
-                $q11, $q11, // 활동성
-                $q6, $q6, $q6, // 그룹 크기
-                $monthly_budget, $monthly_budget, $monthly_budget, $monthly_budget, // 비용
-                $q10, $q10, // 실력 향상
-                $q9, $q9 // 독창성
-            ];
-            
-            debug_output("개선된 쿼리", $query);
-            debug_output("파라미터", $params);
-            
-            $stmt = $pdo->prepare($query);
-            $stmt->execute($params);
-            $recommendations = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            debug_output("=== 추천 결과 ===");
-            debug_output("추천 개수", count($recommendations));
-            
-            if (count($recommendations) > 0) {
-                debug_output("추천 취미 목록", array_column($recommendations, 'name'));
-                debug_output("추천 점수들", array_column($recommendations, 'score'));
-                
-                // 각 추천 취미의 상세 점수 분석
-                foreach ($recommendations as $i => $hobby) {
-                    debug_output("취미 #{$i}: {$hobby['name']}", [
-                        'score' => $hobby['score'],
-                        'activity_type' => $hobby['activity_type'],
-                        'physical_level' => $hobby['physical_level'], 
-                        'group_size' => $hobby['group_size'],
-                        'cost_level' => $hobby['cost_level']
-                    ]);
-                }
-                
-                // 추천 기록 저장
-                foreach ($recommendations as $hobby) {
-                    $stmt = $pdo->prepare("
-                        INSERT INTO hobby_recommendations (user_id, hobby_id, survey_id, recommendation_score) 
-                        VALUES (?, ?, ?, ?)
-                    ");
-                    $stmt->execute([$_SESSION['user_id'], $hobby['id'], $survey_id, $hobby['score']]);
-                }
-                debug_output("추천 기록 저장 완료");
-            } else {
-                debug_output("여전히 추천 결과 없음");
-                
-                // 최후의 수단: 점수 없이 모든 취미 가져오기
-                $stmt = $pdo->query("SELECT * FROM hobbies ORDER BY name LIMIT 3");
-                $fallback_hobbies = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                if (count($fallback_hobbies) > 0) {
-                    debug_output("대체 추천 사용", count($fallback_hobbies) . "개");
-                    $recommendations = $fallback_hobbies;
-                    
-                    // 기본 점수 부여
-                    foreach ($recommendations as &$hobby) {
-                        $hobby['score'] = 0.5; // 기본 점수
-                    }
-                    
-                    // 대체 추천도 기록 저장
-                    foreach ($recommendations as $hobby) {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO hobby_recommendations (user_id, hobby_id, survey_id, recommendation_score) 
-                            VALUES (?, ?, ?, ?)
-                        ");
-                        $stmt->execute([$_SESSION['user_id'], $hobby['id'], $survey_id, 0.5]);
-                    }
+        // 4. AI 추천 결과 파싱 및 변환
+        $response_data = json_decode($response_body, true);
+        if (isset($response_data['final_answer'])) {
+            // AI의 답변이 hobby_recommendation_api/app.py에서 온 JSON 형식이라고 가정
+            // main.py에서 받은 텍스트 답변을 다시 JSON으로 파싱 시도
+            $json_part = substr($response_data['final_answer'], strpos($response_data['final_answer'], '['));
+            if ($json_part) {
+                $parsed_recos = json_decode($json_part, true);
+                if (is_array($parsed_recos)) {
+                    $recommendations = array_map(function($reco) {
+                        return [
+                            'name' => $reco['name_ko'] ?? '이름 없음',
+                            'description' => $reco['short_desc'] ?? '설명 없음',
+                            'score' => $reco['score_total'] ?? 0.5,
+                            'id' => $reco['hobby_id'] ?? 0,
+                            'reason' => $reco['reason'] ?? '' // 추천 이유(reason) 필드 추가
+                        ];
+                    }, $parsed_recos);
                 }
             }
         }
-        
+
+        if (empty($recommendations)) {
+             $error_message = "AI가 추천을 생성하지 못했거나, 응답을 처리하는 데 실패했습니다.";
+             debug_output("추천 결과 파싱 실패 또는 빈 결과", $response_data);
+        }
+
     } catch (Exception $e) {
-        debug_output("예외 발생", $e->getMessage());
-        debug_output("스택 트레이스", $e->getTraceAsString());
-        $error_message = '설문 처리 중 오류가 발생했습니다: ' . $e->getMessage();
+        debug_output("예외 발생", ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        $error_message = '추천을 생성하는 중 오류가 발생했습니다: ' . $e->getMessage();
     }
-    
-    debug_output("=== 설문 처리 완료 ===");
+    debug_output("=== AI 추천 처리 완료 ===");
 }
 
 debug_output("최종 상태", [
@@ -316,18 +211,19 @@ debug_output("최종 상태", [
                                 ?>
 
                                 <?php
-                                $part2_questions = [
-                                    ['name' => 'q6_introversion', 'label' => '6. 새로운 사람들과 어울리기보다, 혼자 또는 가까운 친구와 깊이 있는 시간을 보내는 것을 선호합니다.'],
-                                    ['name' => 'q7_openness', 'label' => '7. 반복적인 일상에 안정감을 느끼기보다, 예측 불가능한 새로운 경험을 통해 영감을 얻는 편입니다.'],
-                                    ['name' => 'q8_planning', 'label' => '8. 즉흥적으로 행동하기보다, 명확한 목표를 세우고 계획에 따라 꾸준히 실행하는 것에서 성취감을 느낍니다.'],
-                                    ['name' => 'q9_creativity', 'label' => '9. 정해진 규칙을 따르기보다, 나만의 방식과 스타일을 더해 독창적인 결과물을 만드는 것을 즐깁니다.'],
-                                    ['name' => 'q10_skill_oriented', 'label' => '10. 과정 자체를 즐기는 것도 좋지만, 꾸준한 연습을 통해 실력이 향상되는 것을 눈으로 확인할 때 가장 큰 보람을 느낍니다.'],
-                                    ['name' => 'q11_active_stress_relief', 'label' => '11. 하루의 스트레스를 조용히 생각하며 풀기보다, 몸을 움직여 땀을 흘리며 해소하는 것을 선호합니다.'],
-                                    ['name' => 'q12_monetization', 'label' => '12. 취미 활동을 통해 새로운 수익을 창출하거나, SNS에서 영향력을 키우는 것에 관심이 많습니다.'],
-                                    ['name' => 'q13_online_community', 'label' => '13. 오프라인에서 직접 만나 교류하는 것만큼, 온라인 커뮤니티에서 소통하는 것에서도 강한 소속감을 느낍니다.'],
-                                    ['name' => 'q14_generalist', 'label' => '14. 하나의 취미를 깊게 파고드는 전문가가 되기보다, 다양한 분야를 경험해보는 제너럴리스트가 되고 싶습니다.'],
-                                    ['name' => 'q15_process_oriented', 'label' => '15. 이 취미를 통해 \'무엇을 얻을 수 있는가\'보다 \'그 순간이 얼마나 즐거운가\'가 더 중요합니다.'],
+                                                                $part2_questions = [
+                                    ['name' => 'Q6', 'label' => '6. 새로운 사람들과 어울리기보다, 혼자 또는 가까운 친구와 깊이 있는 시간을 보내는 것을 선호합니다.'],
+                                    ['name' => 'Q7', 'label' => '7. 반복적인 일상에 안정감을 느끼기보다, 예측 불가능한 새로운 경험을 통해 영감을 얻는 편입니다.'],
+                                    ['name' => 'Q8', 'label' => '8. 즉흥적으로 행동하기보다, 명확한 목표를 세우고 계획에 따라 꾸준히 실행하는 것에서 성취감을 느낍니다.'],
+                                    ['name' => 'Q9', 'label' => '9. 정해진 규칙을 따르기보다, 나만의 방식과 스타일을 더해 독창적인 결과물을 만드는 것을 즐깁니다.'],
+                                    ['name' => 'Q10', 'label' => '10. 과정 자체를 즐기는 것도 좋지만, 꾸준한 연습을 통해 실력이 향상되는 것을 눈으로 확인할 때 가장 큰 보람을 느낍니다.'],
+                                    ['name' => 'Q11', 'label' => '11. 하루의 스트레스를 조용히 생각하며 풀기보다, 몸을 움직여 땀을 흘리며 해소하는 것을 선호합니다.'],
+                                    ['name' => 'Q12', 'label' => '12. 취미 활동을 통해 새로운 수익을 창출하거나, SNS에서 영향력을 키우는 것에 관심이 많습니다.'],
+                                    ['name' => 'Q13', 'label' => '13. 오프라인에서 직접 만나 교류하는 것만큼, 온라인 커뮤니티에서 소통하는 것에서도 강한 소속감을 느낍니다.'],
+                                    ['name' => 'Q14', 'label' => '14. 하나의 취미를 깊게 파고드는 전문가가 되기보다, 다양한 분야를 경험해보는 제너럴리스트가 되고 싶습니다.'],
+                                    ['name' => 'Q15', 'label' => '15. 이 취미를 통해 \'무엇을 얻을 수 있는가\'보다 \'그 순간이 얼마나 즐거운가\'가 더 중요합니다.'],
                                 ];
+
 
                                 $all_questions = array_merge(
                                     array_map(fn($q) => array_merge($q, ['type' => 'radio']), $part1_questions),
@@ -364,17 +260,18 @@ debug_output("최종 상태", [
                                         <div class="question-group-likert">
                                             <label class="question-label-likert"><?php echo $q['label']; ?></label>
                                             <div class="likert-scale">
-                                                <span class="likert-label-left">전혀 그렇지 않다</span>
                                                 <div class="likert-options">
                                                     <?php for ($i = 1; $i <= 5; $i++): ?>
                                                     <label class="likert-option">
                                                         <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $i; ?>" required>
-                                                        <span class="likert-radio-button"></span>
-                                                        <span class="likert-number"><?php echo $i; ?></span>
+                                                        <span class="likert-radio-button"><?php echo $i; ?></span>
                                                     </label>
                                                     <?php endfor; ?>
                                                 </div>
-                                                <span class="likert-label-right">매우 그렇다</span>
+                                                <div class="likert-labels">
+                                                    <span>전혀 그렇지 않다</span>
+                                                    <span>매우 그렇다</span>
+                                                </div>
                                             </div>
                                         </div>
                                     <?php endif; ?>
@@ -400,14 +297,17 @@ debug_output("최종 상태", [
                                 <div class="hobby-card" onclick="loadMeetups(<?php echo $hobby['id']; ?>)">
                                     <div class="hobby-card-header">
                                         <h3 class="hobby-name"><?php echo htmlspecialchars($hobby['name']); ?></h3>
-                                        <span class="hobby-category"><?php echo htmlspecialchars($hobby['category']); ?></span>
+                                        
                                     </div>
                                     <p class="hobby-description"><?php echo htmlspecialchars($hobby['description']); ?></p>
                                     <div class="hobby-tags">
-                                        <span class="tag"><?php echo $hobby['difficulty_level']; ?></span>
-                                        <span class="tag"><?php echo $hobby['activity_type']; ?></span>
-                                        <span class="tag"><?php echo $hobby['physical_level']; ?> 체력</span>
-                                        <span class="tag"><?php echo $hobby['cost_level']; ?></span>
+                                        <?php 
+                                            // 추천 이유(reason)를 분리하여 태그로 표시합니다.
+                                            $reasons = explode(' · ', $hobby['reason']);
+                                            foreach (array_filter($reasons) as $reason_tag): 
+                                        ?>
+                                            <span class="tag"><?php echo htmlspecialchars($reason_tag); ?></span>
+                                        <?php endforeach; ?>
                                     </div>
                                     <div class="hobby-score">
                                         <span>추천도: <?php echo round($hobby['score'] * 100); ?>%</span>
@@ -461,6 +361,22 @@ debug_output("최종 상태", [
             const part1Header = document.getElementById('part1-header');
             const part2Header = document.getElementById('part2-header');
 
+            // --- 자동 다음 질문으로 넘기기 기능 추가 ---
+            const allRadioButtons = surveyForm.querySelectorAll('input[type="radio"]');
+            allRadioButtons.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    // 마지막 질문이 아닐 경우에만 자동 진행
+                    if (currentStep < totalSteps) {
+                        // 사용자가 선택을 인지할 수 있도록 약간의 딜레이 후 다음으로 이동
+                        setTimeout(() => {
+                            if (nextBtn.style.display !== 'none') {
+                                nextBtn.click();
+                            }
+                        }, 350); 
+                    }
+                });
+            });
+
             updateStepDisplay();
             updateProgress();
 
@@ -489,6 +405,14 @@ debug_output("최종 상태", [
                 if (validateCurrentStep()) {
                     submitBtn.textContent = '분석 중...';
                     submitBtn.disabled = true;
+
+                    // submit() 함수가 버튼의 name을 포함하지 않으므로, hidden input을 추가해줍니다.
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'submit_survey';
+                    hiddenInput.value = 'true';
+                    surveyForm.appendChild(hiddenInput);
+
                     surveyForm.submit();
                 } else {
                     alert('마지막 질문에 답변해주세요.');

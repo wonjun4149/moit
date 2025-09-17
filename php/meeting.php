@@ -19,6 +19,7 @@ try {
         SELECT 
             m.id, m.title, m.description, m.category, m.location, 
             m.max_members, m.image_path, m.created_at, m.organizer_id,
+            m.meeting_date, m.meeting_time, -- 추가된 컬럼
             u.nickname AS organizer_nickname,
             (SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id) AS current_members_count,
             (CASE 
@@ -108,6 +109,7 @@ try {
                                     <span class="organizer-nickname-hidden" style="display:none;"><?php echo htmlspecialchars($meeting['organizer_nickname']); ?></span>
 
                                     <div class="card-details">
+                                        <span class="detail-item">🗓️ <?php echo htmlspecialchars($meeting['meeting_date']); ?> <?php echo htmlspecialchars(substr($meeting['meeting_time'], 0, 5)); ?></span>
                                         <span class="detail-item">📍 <?php echo htmlspecialchars($meeting['location']); ?></span>
                                         <span class="detail-item">👥 <span class="member-count"><?php echo $current_members; ?> / <?php echo $meeting['max_members']; ?></span>명</span>
                                         </div>
@@ -167,6 +169,7 @@ try {
             <div class="modal-body">
                 <p id="modal-details-description"></p>
                 <div class="modal-details-info">
+                    <span>🗓️ 날짜: <strong id="modal-details-datetime"></strong></span>
                     <span>📍 장소: <strong id="modal-details-location"></strong></span>
                     <span>👥 인원: <strong id="modal-details-members"></strong></span>
                     <span>👤 개설자: <strong id="modal-details-organizer"></strong></span>
@@ -213,6 +216,16 @@ try {
                 <div class="form-group">
                     <label for="create-location">장소</label>
                     <input type="text" id="create-location" name="location" placeholder="예: 아산시 방축동 실내테니스장" required>
+                </div>
+                <div class="form-group form-row">
+                    <div class="form-group-half">
+                        <label for="create-date">모임 날짜</label>
+                        <input type="date" id="create-date" name="meeting_date" required>
+                    </div>
+                    <div class="form-group-half">
+                        <label for="create-time">모임 시간</label>
+                        <input type="time" id="create-time" name="meeting_time" required>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="create-max-members">최대 인원</label>
@@ -273,50 +286,53 @@ try {
         createMeetingForm.addEventListener('submit', function(e) {
             e.preventDefault(); // 기본 폼 제출 방지
 
-            const formData = new FormData(this);
+            const title = document.getElementById('create-title').value;
+            const description = document.getElementById('create-description').value;
 
-            fetch('check_similar_meetings.php', {
+            // AI 에이전트 서버에 보낼 데이터
+            const requestData = {
+                user_input: {
+                    title: title,
+                    description: description
+                }
+            };
+
+            // AI 에이전트 API 호출
+            fetch('http://127.0.0.1:8000/agent/invoke', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
             })
             .then(response => response.json())
             .then(data => {
-                if (data.error) {
-                    console.error(data.error);
-                    this.submit(); // 에러 발생 시 그냥 생성
-                } else if (data.length > 0) {
-                    // 비슷한 모임이 있을 경우 추천 모달 표시
+                if (data.final_answer && !data.final_answer.includes("찾지 못했습니다")) {
+                    // AI가 유사한 모임을 찾은 경우, 추천 모달을 띄웁니다.
                     const recommendationList = document.getElementById('recommendation-list');
                     recommendationList.innerHTML = ''; // 기존 목록 초기화
 
-                    data.forEach(meeting => {
-                        const item = document.createElement('div');
-                        item.className = 'recommendation-item';
-                        item.innerHTML = `
-                            <img src="../${meeting.image_path || 'assets/default_image.png'}" alt="${meeting.title}" class="recommendation-item-img">
-                            <div class="recommendation-item-info">
-                                <h4>${meeting.title}</h4>
-                                <p>${meeting.description.substring(0, 50)}...</p>
-                                <p>👥 ${meeting.current_members} / ${meeting.max_members}명</p>
-                            </div>
-                            <form action="join_meeting.php" method="POST">
-                                <input type="hidden" name="meeting_id" value="${meeting.id}">
-                                <button type="submit" class="btn-primary">참여하기</button>
-                            </form>
-                        `;
-                        recommendationList.appendChild(item);
-                    });
+                    const item = document.createElement('div');
+                    item.className = 'recommendation-item-ai';
+                    // AI의 답변을 마크다운처럼 간단히 파싱하여 표시합니다.
+                    const formattedAnswer = data.final_answer.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    item.innerHTML = `<p>${formattedAnswer}</p>`;
+                    recommendationList.appendChild(item);
+                    
+                    document.querySelector('#recommendation-modal h2').textContent = "이런 모임은 어떠세요?";
+                    document.querySelector('#recommendation-modal p').textContent = "AI가 회원님의 입력과 유사한 모임을 찾았어요.";
 
                     closeModal(createModal);
                     openModal(recommendationModal);
                 } else {
-                    // 비슷한 모임이 없으면 바로 생성
+                    // AI가 유사 모임을 찾지 못했거나 오류가 발생하면 바로 폼을 제출하여 모임을 생성합니다.
                     this.submit();
                 }
             })
             .catch(error => {
-                console.error('Error checking for similar meetings:', error);
-                this.submit(); // 에러 발생 시 그냥 생성
+                console.error('AI Agent API Error:', error);
+                // API 서버가 꺼져있는 등 네트워크 오류 발생 시, 그냥 모임을 생성하도록 바로 제출합니다.
+                this.submit();
             });
         });
 
@@ -344,6 +360,7 @@ try {
             const members = card.querySelector('.member-count').textContent.trim();
             const organizer = card.querySelector('.organizer-nickname-hidden')?.textContent || '정보 없음';
             const imgSrc = card.querySelector('.card-image img').src;
+            const meetingDate = card.querySelector('.detail-item:first-child').textContent.replace('🗓️','').trim();
             
             const isJoined = card.dataset.isJoined === 'true';
             const organizerId = card.dataset.organizerId;
@@ -355,6 +372,7 @@ try {
             document.getElementById('modal-details-category').textContent = category;
             document.getElementById('modal-details-status').textContent = status;
             document.getElementById('modal-details-status').className = 'card-status ' + statusClass.split(' ')[1];
+            document.getElementById('modal-details-datetime').textContent = meetingDate;
             document.getElementById('modal-details-location').textContent = location;
             document.getElementById('modal-details-members').textContent = members;
             document.getElementById('modal-details-organizer').textContent = organizer;

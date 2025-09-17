@@ -6,7 +6,7 @@ if (session_status() == PHP_SESSION_NONE) {
 
 // 데이터베이스 연결 설정
 const DB_HOST = 'localhost';
-const DB_NAME = 'hobby_platform'; // 이전에 확인한 데이터베이스 이름
+const DB_NAME = 'moit_db'; // 이전에 확인한 데이터베이스 이름
 const DB_USER = 'moit_user'; 
 const DB_PASS = 'password'; 
 

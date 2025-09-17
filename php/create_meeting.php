@@ -20,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $category = $_POST['category'];
     $location = trim($_POST['location']);
     $max_members = (int)$_POST['max_members'];
+    $meeting_date = $_POST['meeting_date'];
+    $meeting_time = $_POST['meeting_time'];
     $image_path = null; // 기본값은 null
 
     // --- 1. 파일 업로드 처리 ---
@@ -54,12 +56,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // --- 2. 데이터베이스에 저장 ---
     try {
         $pdo = getDBConnection();
-        $sql = "INSERT INTO meetings (organizer_id, title, description, category, location, max_members, image_path) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO meetings (organizer_id, title, description, category, location, max_members, meeting_date, meeting_time, image_path) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $pdo->prepare($sql);
         
-        if ($stmt->execute([$organizer_id, $title, $description, $category, $location, $max_members, $image_path])) {
+        if ($stmt->execute([$organizer_id, $title, $description, $category, $location, $max_members, $meeting_date, $meeting_time, $image_path])) {
+            // --- AI 서버에 새 모임 정보 전송 (Pinecone 업데이트) ---
+            $new_meeting_id = $pdo->lastInsertId();
+            
+            // API로 보낼 데이터 준비
+            $api_data = [
+                'meeting_id' => (string)$new_meeting_id, // ID는 문자열로
+                'title' => $title,
+                'description' => $description,
+                'time' => $meeting_date . ' ' . $meeting_time,
+                'location' => $location
+            ];
+            
+            // cURL을 사용해 FastAPI 서버에 POST 요청 (FastAPI 기본 포트 8000)
+            $ch = curl_init('http://127.0.0.1:8000/meetings/add');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen(json_encode($api_data))
+            ]);
+            
+            // API 서버가 꺼져있어도 프론트엔드 동작에 영향을 주지 않도록 타임아웃 설정
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2); // 2초
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 5초
+
+            $response = curl_exec($ch);
+            // API 호출 실패 시 에러를 로그 파일에 기록할 수 있습니다.
+            if(curl_errno($ch)){
+                error_log('AI server API call error: ' . curl_error($ch));
+            }
+            curl_close($ch);
+            // --- AI 서버 전송 끝 ---
+
             // 성공적으로 저장 후 모임 목록 페이지로 이동
             redirect('meeting.php');
         } else {
