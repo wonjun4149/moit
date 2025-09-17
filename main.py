@@ -370,4 +370,4 @@ async def delete_meeting_from_pinecone(meeting_id: str):
         return {"status": "success", "message": f"모임(ID: {meeting_id})이 성공적으로 삭제되었습니다."}
     except Exception as e:
         logging.error(f"Pinecone 삭제 중 오류 발생: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Pinecone에서 모임을 삭제하는 중 오류가 발생했습니다: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Pinecone에서 모임을 삭제하는 중 오류가 발생했습니다.: {str(e)}")
