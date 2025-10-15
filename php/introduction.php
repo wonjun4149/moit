@@ -61,7 +61,7 @@ $site_title = "MOIT - 소개";
 
         <div class="right-image">
             <div class="image-wrapper">
-                <img src="../img/KakaoTalk_20251015_171647158_01.jpg" alt="다양한 취미를 즐기는 사람들 일러스트" class="illustration-image">
+                <img src="../img/KakaoTalk_20251015_171456242.png" alt="다양한 취미를 즐기는 사람들 일러스트" class="illustration-image">
             </div>
         </div>
     </main>
