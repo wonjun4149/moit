@@ -553,3 +553,19 @@ body {
     border-radius: 5px;
     cursor: pointer;
 }
+
+.btn-danger {
+    padding: 12px 28px;
+    background-color: #f44336; /* 빨간색 계열 */
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.05em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-danger:hover {
+    background-color: #d32f2f;
+}
