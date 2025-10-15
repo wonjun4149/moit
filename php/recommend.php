@@ -57,7 +57,7 @@ $recommendations = $reco_data['recommendations'] ?? [];
         </div>
 
         <div class="btn-group">
-            <a href="create_confirmed.php" class="btn btn-create">무시하고 새로 만들기</a>
+            <!-- <a href="create_confirmed.php" class="btn btn-create">무시하고 새로 만들기</a> -->
             <a href="meeting.php" class="btn btn-back">모임 목록으로 돌아가기</a>
         </div>
     </div>
