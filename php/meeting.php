@@ -213,7 +213,6 @@ try {
         </form>
     </div>
 </div>
-    </div>
 
     <div id="recommendation-modal" class="modal-backdrop" style="display: none;">
         ... (생략) ...
