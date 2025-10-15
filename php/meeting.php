@@ -71,7 +71,8 @@ try {
                     <button class="filter-btn" data-category="문화 및 예술"># 문화 및 예술</button>
                     <button class="filter-btn" data-category="푸드 및 드링크"># 푸드 및 드링크</button>
                     <button class="filter-btn" data-category="여행 및 탐방"># 여행 및 탐방</button>
-                    <button class="filter-btn" data-category="더보기">v 더보기</button>
+                    <button class="filter-btn" data-category="봉사 및 참여" style="display: none;"># 봉사 및 참여</button>
+                    <button id="show-more-btn">v 더보기</button>
                 </div>
 
                 <div class="sorting-options">
@@ -299,12 +300,27 @@ try {
 
         // 카테고리 버튼 클릭 이벤트
         categoryFilterContainer.addEventListener('click', (e) => {
-            if (e.target.tagName === 'BUTTON') {
-                categoryFilterContainer.querySelector('.filter-btn.active').classList.remove('active');
+            if (e.target.classList.contains('filter-btn')) {
+                const currentActive = categoryFilterContainer.querySelector('.filter-btn.active');
+                if (currentActive) {
+                    currentActive.classList.remove('active');
+                }
                 e.target.classList.add('active');
                 applyFilters();
             }
         });
+
+        // "더보기" 버튼 기능
+        const showMoreBtn = document.getElementById('show-more-btn');
+        if (showMoreBtn) {
+            showMoreBtn.addEventListener('click', () => {
+                const hiddenCategory = document.querySelector('[data-category="봉사 및 참여"]');
+                if (hiddenCategory) {
+                    hiddenCategory.style.display = 'inline-block';
+                }
+                showMoreBtn.style.display = 'none';
+            });
+        }
 
         searchButton.addEventListener('click', applyFilters);
         searchInput.addEventListener('keyup', applyFilters); // 실시간 검색
