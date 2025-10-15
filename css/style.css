@@ -112,7 +112,7 @@ body {
     position: relative;
     overflow: hidden;
     /* [수정] img 폴더의 main_background.jpg를 배경으로 설정 */
-    background-image: url('../img/main_background.jpg');
+    background-image: url('../img/KakaoTalk_20251015_171501431.jpg');
     background-size: cover;
     background-position: center;
 }
