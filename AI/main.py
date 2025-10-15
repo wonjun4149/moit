@@ -376,12 +376,11 @@ async def invoke_agent(request: AgentInvokeRequest):
 
         input_data = {"messages": processed_messages}
 
-        final_answer = ""
-        for event in supervisor_agent.stream(input_data, {"recursion_limit": 15}):
-            if "messages" in event:
-                last_message = event["messages"][-1]
-                if isinstance(last_message.content, str) and not last_message.tool_calls:
-                    final_answer = last_message.content
+        # 스트리밍 대신 invoke를 사용하여 최종 결과만 안정적으로 받도록 수정
+        output = supervisor_agent.invoke(input_data, {"recursion_limit": 15})
+        
+        # AgentExecutor의 출력 형식에 맞게 'output' 키에서 최종 답변을 추출
+        final_answer = output.get("output", "")
         
         return {"final_answer": final_answer}
     except Exception as e:

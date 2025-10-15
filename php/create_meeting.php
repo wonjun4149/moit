@@ -64,20 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // final_answer는 이미 JSON 문자열이므로, 이를 다시 디코딩합니다.
     $agent_response = isset($response_data['final_answer']) ? json_decode($response_data['final_answer'], true) : [];
 
-    // --- DEBUGGING --- 
-    echo "<pre>";
-    echo "Raw JSON from Agent:\n";
-    var_dump($agent_response_json);
-    echo "\nDecoded Agent Response:\n";
-    var_dump($agent_response);
-    echo "\nRecommendations Array:\n";
-    var_dump($agent_response['recommendations']);
-    echo "\nIs Recommendations Empty? (true = empty, false = not empty)\n";
-    var_dump(empty($agent_response['recommendations']));
-    echo "</pre>";
-    die("--- DEBUGGING END ---");
-    // --- END DEBUGGING ---
-
     
     // AI가 추천을 반환했는지 확인
     if (isset($agent_response['recommendations']) && !empty($agent_response['recommendations'])) {
