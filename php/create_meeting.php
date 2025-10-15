@@ -44,6 +44,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     curl_setopt($ch_agent, CURLOPT_TIMEOUT, 30); // 에이전트가 생각할 시간을 넉넉하게 30초
 
     $agent_response_json = curl_exec($ch_agent);
+
+    // cURL 에러 체크
+    if (curl_errno($ch_agent)) {
+        $error_msg = curl_error($ch_agent);
+        curl_close($ch_agent);
+        die("AI 에이전트 호출 실패: " . $error_msg);
+    }
+
+    if (empty($agent_response_json)) {
+        curl_close($ch_agent);
+        die("AI 에이전트로부터 비어있는 응답을 받았습니다. AI 서버 로그를 확인해주세요.");
+    }
+
     curl_close($ch_agent);
 
     // AI 응답(JSON)을 2단계로 해석
