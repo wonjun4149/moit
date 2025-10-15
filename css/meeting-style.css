@@ -138,10 +138,21 @@ body {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); /* 호버 시 그림자 */
 }
 
+.meeting-card:hover .card-image img {
+    transform: scale(1.05); /* 호버 시 이미지 살짝 확대 */
+}
+
 .card-image {
     width: 100%;
     height: 180px; /* 높이 조정 */
     overflow: hidden;
+}
+
+.card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease; /* 호버 효과를 위해 추가 */
 }
 
 .card-content {
@@ -438,4 +449,123 @@ body {
 @keyframes slideInUp {
     from { transform: translateY(50px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+/* Details Modal Specific Styles */
+.modal-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#modal-details-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+#modal-details-status.recruiting {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+#modal-details-status.completed {
+    background-color: #f3f4f6;
+    color: #4b5563;
+}
+
+#modal-details-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.modal-image-container {
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+#modal-details-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.modal-details-grid .detail-item {
+    font-size: 15px;
+}
+
+.modal-details-grid .detail-item strong {
+    display: block;
+    color: #888;
+    font-weight: 500;
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+#modal-details-description {
+    line-height: 1.6;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.participants-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.participants-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+#modal-participants-list {
+    list-style: none;
+    padding: 0;
+}
+
+#modal-participants-list li {
+    padding: 5px 0;
+}
+
+#modal-details-footer .btn-cancel {
+    background-color: #f44336;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-danger {
+    padding: 12px 28px;
+    background-color: #f44336; /* 빨간색 계열 */
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.05em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-danger:hover {
+    background-color: #d32f2f;
 }

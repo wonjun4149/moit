@@ -153,7 +153,51 @@ try {
     </main>
 
     <div id="details-modal" class="modal-backdrop" style="display: none;">
-        ... (생략) ...
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <div class="modal-header">
+                <span id="modal-details-status" class="card-status"></span>
+                <h2 id="modal-details-title"></h2>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-container">
+                    <img id="modal-details-img" src="" alt="모임 대표 이미지">
+                </div>
+                <div class="modal-details-grid">
+                    <div class="detail-item">
+                        <strong>카테고리</strong>
+                        <span id="modal-details-category"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>일시</strong>
+                        <span id="modal-details-datetime"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>장소</strong>
+                        <span id="modal-details-location"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>인원</strong>
+                        <span id="modal-details-members"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>개설자</strong>
+                        <span id="modal-details-organizer"></span>
+                    </div>
+                </div>
+                <p id="modal-details-description"></p>
+                
+                <div class="participants-section">
+                    <h4>참여 멤버</h4>
+                    <ul id="modal-participants-list">
+                        <!-- 참여자 목록이 여기에 동적으로 추가됩니다. -->
+                    </ul>
+                </div>
+            </div>
+            <div id="modal-details-footer" class="modal-footer">
+                <!-- 버튼이 여기에 동적으로 추가됩니다. -->
+            </div>
+        </div>
     </div>
 
     <div id="create-modal" class="modal-backdrop" style="display: none;">
@@ -249,13 +293,11 @@ try {
 
         // --- 상세보기 기능 (이벤트 리스너 변경) ---
         meetingCardsContainer.addEventListener('click', (e) => {
-            // 이제 버튼이 아닌 카드 전체에 이벤트를 적용
             const card = e.target.closest('.meeting-card');
             if (!card) {
                 return;
             }
             
-            // 카드에서 정보 추출
             const id = card.dataset.id;
             const title = card.querySelector('.card-title').textContent;
             const description = card.querySelector('.card-description-full').textContent;
@@ -270,12 +312,9 @@ try {
             const organizerId = card.dataset.organizerId;
             const isFull = card.dataset.isFull === 'true';
 
-            // 모집 상태 다시 계산
             const statusText = isFull ? '모집완료' : '모집중';
             const statusClass = isFull ? 'completed' : 'recruiting';
 
-
-            // 모달에 정보 채우기
             document.getElementById('modal-details-title').textContent = title;
             document.getElementById('modal-details-description').textContent = description;
             document.getElementById('modal-details-category').textContent = category;
@@ -287,14 +326,17 @@ try {
             document.getElementById('modal-details-organizer').textContent = organizer;
             document.getElementById('modal-details-img').src = imgSrc;
             
-            // 모달 푸터 버튼 업데이트 (기존 로직과 동일)
             const modalFooter = document.getElementById('modal-details-footer');
-            modalFooter.innerHTML = ''; // 기존 버튼 삭제
+            modalFooter.innerHTML = '';
 
             if (currentUserId === organizerId) {
-                // 개설자는 신청/취소 버튼이 보이지 않음
+                modalFooter.innerHTML = `
+                    <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까? 복구할 수 없습니다.');">
+                        <input type="hidden" name="meeting_id" value="${id}">
+                        <button type="submit" class="btn-danger">모임 삭제하기</button>
+                    </form>
+                `;
             } else if (isJoined) {
-                // 이미 신청한 경우 -> 취소 버튼
                 modalFooter.innerHTML = `
                     <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
                         <input type="hidden" name="meeting_id" value="${id}">
@@ -302,7 +344,6 @@ try {
                     </form>
                 `;
             } else {
-                // 신청하지 않은 경우 -> 신청 버튼
                 const joinButton = document.createElement('button');
                 joinButton.type = 'submit';
                 joinButton.className = 'btn-primary';
@@ -322,10 +363,29 @@ try {
             
             openModal(detailsModal);
 
-            // 참여자 목록 가져오기 (기존 로직과 동일)
-            // ... (생략) ...
-        });
+            const participantsList = document.getElementById('modal-participants-list');
+            participantsList.innerHTML = '<li>참여 멤버를 불러오는 중...</li>';
 
+            fetch(`get_participants.php?meeting_id=${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        participantsList.innerHTML = '<li>참여자 정보를 불러오는데 실패했습니다.</li>';
+                        console.error(data.error);
+                        return;
+                    }
+                    
+                    if (data.length > 0) {
+                        participantsList.innerHTML = data.map(participant => `<li>${participant}</li>`).join('');
+                    } else {
+                        participantsList.innerHTML = '<li>아직 참여 멤버가 없습니다.</li>';
+                    }
+                })
+                .catch(error => {
+                    participantsList.innerHTML = '<li>참여자 정보를 불러오는 중 오류가 발생했습니다.</li>';
+                    console.error('Error fetching participants:', error);
+                });
+        });
 
         // --- 검색 및 필터 기능 (필터 로직 수정) ---
         const searchInput = document.getElementById('search-input');
@@ -387,6 +447,19 @@ try {
                     fileNameSpan.textContent = this.files[0].name;
                 } else {
                     fileNameSpan.textContent = '선택된 파일 없음';
+                }
+            });
+        }
+
+        // 폼 제출 유효성 검사
+        const createMeetingForm = document.getElementById('create-meeting-form');
+        if (createMeetingForm) {
+            createMeetingForm.addEventListener('submit', function(event) {
+                // 폼 유효성 검사를 통과하지 못하면 기본 제출 동작을 막음
+                if (!this.checkValidity()) {
+                    event.preventDefault();
+                    // 브라우저의 내장 유효성 검사 UI를 강제로 표시
+                    this.reportValidity();
                 }
             });
         }

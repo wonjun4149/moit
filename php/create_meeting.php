@@ -21,12 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $meeting_time = $_POST['meeting_time'];
 
     // --- 1. AI 에이전트를 호출하여 유사 모임 확인 ---
+    // AI가 기대하는 messages 형식에 맞게 데이터 구조 변경
+    $meeting_info = [
+        'title' => $title,
+        'description' => $description,
+        'location' => $location,
+        'time' => $meeting_date . ' ' . $meeting_time
+    ];
+
     $agent_input = [
-        'user_input' => [
-            'title' => $title,
-            'description' => $description,
-            'location' => $location,
-            'time' => $meeting_date . ' ' . $meeting_time
+        'messages' => [
+            ['user', $meeting_info] // content 부분에 딕셔너리를 직접 전달
         ]
     ];
 
