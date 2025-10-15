@@ -29,7 +29,7 @@
 }
 
 .hamburger {
-    display: flex;
+    display: none; /* 반응형에서만 보이도록 우선 숨김 */
     flex-direction: column;
     width: 20px;
     height: 15px;
@@ -143,23 +143,53 @@
     white-space: nowrap;
 }
 
-.profile-btn {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4A90E2, #357ABD);
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
+/* [추가] 다크 모드 스타일 (index.php 전용) 
+*/
+.navbar.navbar-dark {
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.profile-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 20px rgba(74, 144, 226, 0.3);
+.navbar.navbar-dark .logo a,
+.navbar.navbar-dark .nav-menu a,
+.navbar.navbar-dark .nav-btn {
+    color: #fff;
+}
+
+.navbar.navbar-dark .hamburger span {
+    background: #fff;
+}
+
+.navbar.navbar-dark .nav-menu a:hover,
+.navbar.navbar-dark .nav-menu a.active {
+    color: #4A90E2;
+}
+
+.navbar.navbar-dark .nav-btn {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.navbar.navbar-dark .nav-btn:hover {
+    border-color: #4A90E2;
+    color: #4A90E2;
+    background: rgba(74, 144, 226, 0.1);
+}
+
+.navbar.navbar-dark .logout-btn {
+    border-color: #f44336;
+    color: #f44336;
+}
+
+.navbar.navbar-dark .logout-btn:hover {
+    background: rgba(244, 67, 54, 0.1);
 }
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
+    .hamburger {
+        display: flex; /* 768px 이하에서 햄버거 메뉴 보이게 */
+    }
+
     .nav-menu {
         display: none;
         position: absolute;
@@ -170,7 +200,12 @@
         flex-direction: column;
         padding: 20px;
         gap: 15px;
-        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .navbar.navbar-dark .nav-menu {
+        background: rgba(0, 0, 0, 0.95);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .nav-menu.active {

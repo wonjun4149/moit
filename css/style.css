@@ -18,7 +18,7 @@ body {
 .main-container {
     height: 100vh;
     display: flex;
-    margin-top: 70px;
+    margin-top: 70px; /* 네비게이션 바 높이만큼 */
 }
 
 /* 왼쪽 컨텐츠 */
@@ -51,7 +51,7 @@ body {
 
 .sub-title {
     font-size: 18px;
-    color: #888;
+    color: #aaa; /* 가독성을 위해 조금 더 밝게 조정 */
     line-height: 1.6;
     margin-bottom: 40px;
     animation: fadeInUp 1s ease-out 0.2s both;
@@ -108,32 +108,25 @@ body {
 
 /* 오른쪽 이미지 */
 .right-image {
-    flex: 1;
-    background: linear-gradient(135deg, #4A90E2, #357ABD, #2E5B8A);
+    flex: 1.2; /* 이미지 영역을 조금 더 넓게 */
     position: relative;
     overflow: hidden;
+    /* [수정] img 폴더의 main_background.jpg를 배경으로 설정 */
+    background-image: url('../img/main_background.jpg');
+    background-size: cover;
+    background-position: center;
 }
 
-.image-overlay {
+/* 이미지 위에 어두운 오버레이 추가하여 텍스트 가독성 확보 */
+.right-image::before {
+    content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><radialGradient id="g"><stop offset="0%" stop-color="rgba(255,255,255,0.1)"/><stop offset="100%" stop-color="transparent"/></radialGradient></defs><circle cx="50" cy="50" r="40" fill="url(%23g)"/></svg>') center/cover;
-    animation: float 6s ease-in-out infinite;
-}
-
-.motion-blur {
-    position: absolute;
-    top: 20%;
-    left: 20%;
-    width: 60%;
-    height: 60%;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    filter: blur(40px);
-    animation: pulse 4s ease-in-out infinite alternate;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1;
 }
 
 /* 로그인 상태 스타일 */
@@ -146,47 +139,6 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-@keyframes float {
-    0%, 100% {
-        transform: translateY(0px) rotate(0deg);
-    }
-    50% {
-        transform: translateY(-20px) rotate(5deg);
-    }
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(1.2);
-        opacity: 0.2;
-    }
-}
-
-/* 로그인 상태 스타일 */
-.welcome-msg {
-    color: #4A90E2;
-    font-size: 14px;
-    margin-right: 15px;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.logout-btn {
-    background: rgba(244, 67, 54, 0.1);
-    border-color: #f44336;
-    color: #f44336;
-}
-
-.logout-btn:hover {
-    background: rgba(244, 67, 54, 0.2);
-    border-color: #d32f2f;
-    color: #d32f2f;
 }
 
 .logout-message {
@@ -212,30 +164,17 @@ body {
     }
 }
 
+/* 반응형 디자인 */
 @media (max-width: 768px) {
-    .nav-menu {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        width: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        flex-direction: column;
-        padding: 20px;
-        gap: 15px;
-    }
-
-    .nav-menu.active {
-        display: flex;
-    }
-
     .main-container {
         flex-direction: column;
         height: auto;
     }
 
     .left-content {
-        padding: 40px 30px;
+        padding: 60px 40px;
+        text-align: center;
+        align-items: center;
     }
 
     .main-title {
@@ -244,25 +183,13 @@ body {
 
     .right-image {
         height: 50vh;
-    }
-
-    .nav-left {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .nav-right {
-        flex: 0 0 auto;
-    }
-
-    .welcome-msg {
-        display: none;
+        min-height: 300px;
     }
 }
 
 @media (max-width: 480px) {
     .left-content {
-        padding: 30px 20px;
+        padding: 40px 20px;
     }
 
     .main-title {
@@ -271,13 +198,5 @@ body {
 
     .sub-title {
         font-size: 16px;
-    }
-
-    .nav-container {
-        padding: 0 15px;
-    }
-
-    .logo {
-        margin-right: 20px;
     }
 }
