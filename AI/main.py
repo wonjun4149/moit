@@ -184,18 +184,15 @@ def decide_to_continue(state: MeetingMatchingState):
     return "end" if state["rewrite_count"] > 1 or state["is_helpful"] == "helpful" else "continue"
 
 # 5-3. 모임 매칭 전문가 그래프(SubGraph) 조립
+# 로직 단순화: 불필요한 유용성 검증 및 재작성 루프를 제거하고, 검색 -> 생성 -> 종료의 간단한 흐름으로 변경
 builder = StateGraph(MeetingMatchingState)
 builder.add_node("prepare_query", prepare_query_node)
 builder.add_node("retrieve", retrieve_node)
 builder.add_node("generate", generate_node)
-builder.add_node("check_helpfulness", check_helpfulness_node)
-builder.add_node("rewrite_query", rewrite_query_node)
 builder.set_entry_point("prepare_query")
 builder.add_edge("prepare_query", "retrieve")
 builder.add_edge("retrieve", "generate")
-builder.add_edge("generate", "check_helpfulness")
-builder.add_conditional_edges("check_helpfulness", decide_to_continue, {"continue": "rewrite_query", "end": END})
-builder.add_edge("rewrite_query", "retrieve")
+builder.add_edge("generate", END) # generate 노드 이후에 바로 종료
 meeting_matching_agent = builder.compile()
 
 
