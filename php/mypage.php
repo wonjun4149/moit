@@ -21,7 +21,7 @@ try {
     $stmt_created = $pdo->prepare("
         SELECT 
             m.id, m.title, m.description, m.category, m.location, 
-            m.max_members, m.image_path, m.created_at, m.organizer_id,
+            m.max_members, m.image_path, m.created_at, m.organizer_id, m.meeting_date,
             (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) + 1 AS current_members
         FROM meetings m
         WHERE m.organizer_id = ?
@@ -34,7 +34,7 @@ try {
     $stmt_joined = $pdo->prepare("
         SELECT 
             m.id, m.title, m.description, m.category, m.location, 
-            m.max_members, m.image_path, m.created_at, m.organizer_id,
+            m.max_members, m.image_path, m.created_at, m.organizer_id, m.meeting_date,
             u.nickname AS organizer_nickname,
             (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) + 1 AS current_members
         FROM meetings m
@@ -89,9 +89,9 @@ try {
                         <ul class="meeting-list">
                             <?php foreach ($created_meetings as $meeting): ?>
                                 <?php
-                                    $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
-                                    $status_text = $isRecruiting ? '모집중' : '모집완료';
-                                    $status_class = $isRecruiting ? 'recruiting' : 'completed';
+                                    $is_past = strtotime($meeting['meeting_date']) < strtotime(date('Y-m-d'));
+                                    $status_text = $is_past ? '기간만료' : ($meeting['current_members'] < $meeting['max_members'] ? '모집중' : '모집완료');
+                                    $status_class = $is_past ? 'expired' : ($meeting['current_members'] < $meeting['max_members'] ? 'recruiting' : 'completed');
                                 ?>
                                 <li>
                                     <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-info">
@@ -122,9 +122,9 @@ try {
                         <ul class="meeting-list">
                             <?php foreach ($joined_meetings as $meeting): ?>
                                 <?php
-                                    $isRecruiting = $meeting['current_members'] < $meeting['max_members'];
-                                    $status_text = $isRecruiting ? '모집중' : '모집완료';
-                                    $status_class = $isRecruiting ? 'recruiting' : 'completed';
+                                    $is_past = strtotime($meeting['meeting_date']) < strtotime(date('Y-m-d'));
+                                    $status_text = $is_past ? '기간만료' : ($meeting['current_members'] < $meeting['max_members'] ? '모집중' : '모집완료');
+                                    $status_class = $is_past ? 'expired' : ($meeting['current_members'] < $meeting['max_members'] ? 'recruiting' : 'completed');
                                 ?>
                                 <li>
                                     <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-info">
@@ -137,11 +137,13 @@ try {
                                         <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
                                     </div>
                                     <div class="meeting-actions">
-                                        <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
-                                            <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
-                                            <input type="hidden" name="source" value="mypage">
-                                            <button type="submit" class="btn-cancel">신청 취소</button>
-                                        </form>
+                                        <?php if (!$is_past): ?>
+                                            <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
+                                                <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
+                                                <input type="hidden" name="source" value="mypage">
+                                                <button type="submit" class="btn-cancel">신청 취소</button>
+                                            </form>
+                                        <?php endif; ?>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
