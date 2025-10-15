@@ -102,39 +102,31 @@ try {
                                 $status_class = $isRecruiting ? 'recruiting' : 'completed';
                                 $formatted_date = date("Y. n. j.", strtotime($meeting['meeting_date']));
                             ?>
-                            <div class="meeting-card" 
-                                 data-id="<?php echo $meeting['id']; ?>"
-                                 data-category="<?php echo htmlspecialchars($meeting['category']); ?>"
-                                 data-location="<?php echo htmlspecialchars($meeting['location']); ?>"
-                                 data-is-joined="<?php echo $meeting['is_joined'] ? 'true' : 'false'; ?>"
-                                 data-organizer-id="<?php echo $meeting['organizer_id']; ?>"
-                                 data-is-full="<?php echo !$isRecruiting ? 'true' : 'false'; ?>">
-                                <div class="card-image">
-                                    <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
-                                         alt="<?php echo htmlspecialchars($meeting['title']); ?>">
+                            <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-card-link">
+                                <div class="meeting-card" data-category="<?php echo htmlspecialchars($meeting['category']); ?>">
+                                    <div class="card-image">
+                                        <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
+                                             alt="<?php echo htmlspecialchars($meeting['title']); ?>">
+                                    </div>
+                                    <div class="card-content">
+                                        <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
+                                        <p class="card-description-short"><?php echo $description_short; ?></p>
+                                        
+                                        <div class="card-details">
+                                            <span class="detail-item"><?php echo htmlspecialchars($meeting['location']); ?></span>
+                                            <span class="detail-item"><?php echo $formatted_date; ?></span>
+                                            <span class="detail-item member-count"><?php echo $current_members; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="card-content">
-                                    <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
-                                    <p class="card-description-short"><?php echo $description_short; ?></p>
-                                    <p class="card-description-full" style="display:none;"><?php echo $description_full; ?></p>
-                                    
-                                    <span class="organizer-nickname-hidden" style="display:none;"><?php echo htmlspecialchars($meeting['organizer_nickname']); ?></span>
-                                    <span class="meeting-datetime-hidden" style="display:none;"><?php echo htmlspecialchars($meeting['meeting_date']); ?> <?php echo htmlspecialchars(substr($meeting['meeting_time'], 0, 5)); ?></span>
-
-                                    <div class="card-details">
-                                        <span class="detail-item"><?php echo htmlspecialchars($meeting['location']); ?></span>
-                                        <span class="detail-item"><?php echo $formatted_date; ?></span>
-                                        <span class="detail-item member-count"><?php echo $current_members; ?> / <?php echo $meeting['max_members']; ?>명</span>
-                                    </div>
-                                    </div>
-                            </div>
+                            </a>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
             </div>
 
             <div class="right-section">
-                <button class="btn-create-meeting" id="open-create-modal-btn">+ 새 모임 만들기</button>
+                <a href="create_meeting_form.php" class="btn-create-meeting">+ 새 모임 만들기</a>
                 
                 <div class="search-box">
                     <h3>모임 검색</h3>
@@ -152,242 +144,9 @@ try {
         </div>
     </main>
 
-    <div id="details-modal" class="modal-backdrop" style="display: none;">
-        <div class="modal-content">
-            <button class="modal-close-btn">&times;</button>
-            <div class="modal-header">
-                <span id="modal-details-status" class="card-status"></span>
-                <h2 id="modal-details-title"></h2>
-            </div>
-            <div class="modal-body">
-                <div class="modal-image-container">
-                    <img id="modal-details-img" src="" alt="모임 대표 이미지">
-                </div>
-                <div class="modal-details-grid">
-                    <div class="detail-item">
-                        <strong>카테고리</strong>
-                        <span id="modal-details-category"></span>
-                    </div>
-                    <div class="detail-item">
-                        <strong>일시</strong>
-                        <span id="modal-details-datetime"></span>
-                    </div>
-                    <div class="detail-item">
-                        <strong>장소</strong>
-                        <span id="modal-details-location"></span>
-                    </div>
-                    <div class="detail-item">
-                        <strong>인원</strong>
-                        <span id="modal-details-members"></span>
-                    </div>
-                    <div class="detail-item">
-                        <strong>개설자</strong>
-                        <span id="modal-details-organizer"></span>
-                    </div>
-                </div>
-                <p id="modal-details-description"></p>
-                
-                <div class="participants-section">
-                    <h4>참여 멤버</h4>
-                    <ul id="modal-participants-list">
-                        <!-- 참여자 목록이 여기에 동적으로 추가됩니다. -->
-                    </ul>
-                </div>
-            </div>
-            <div id="modal-details-footer" class="modal-footer">
-                <!-- 버튼이 여기에 동적으로 추가됩니다. -->
-            </div>
-        </div>
-    </div>
-
-    <div id="create-modal" class="modal-backdrop" style="display: none;">
-            <div class="modal-content">
-        <button class="modal-close-btn">&times;</button>
-        <h2>새 모임 만들기</h2>
-        <form id="create-meeting-form" action="create_meeting.php" method="POST" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="create-title">제목</label>
-                <input type="text" id="create-title" name="title" placeholder="예: 주말 아침 함께 테니스 칠 분!" required>
-            </div>
-
-            <div class="form-group">
-                <label for="create-image">대표 사진</label>
-                <div class="file-upload-wrapper">
-                    <input type="file" id="create-image" name="meeting_image" accept="image/*" class="file-upload-hidden">
-                    <label for="create-image" class="file-upload-button">파일 선택</label>
-                    <span class="file-upload-name">선택된 파일 없음</span>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="create-category">카테고리</label>
-                <select id="create-category" name="category" required>
-                    <option value="취미 및 여가">취미 및 여가</option>
-                    <option value="운동">운동</option>
-                    <option value="스터디">스터디</option>
-                    <option value="문화">문화</option>
-                    <option value="봉사활동">봉사활동</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="create-description">상세 설명</label>
-                <textarea id="create-description" name="description" rows="4" placeholder="모임에 대한 상세한 설명을 적어주세요." required></textarea>
-            </div>
-
-            <div class="form-group">
-                 <label>날짜 및 시간</label>
-                 <div class="datetime-group">
-                    <input type="date" id="create-date" name="meeting_date" required>
-                    <input type="time" id="create-time" name="meeting_time" required>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="create-location">장소</label>
-                <input type="text" id="create-location" name="location" placeholder="예: 아산시 방축동 실내테니스장" required>
-            </div>
-
-            <div class="form-group">
-                <label for="create-max-members">최대 인원</label>
-                <input type="number" id="create-max-members" name="max_members" min="2" value="2" required>
-            </div>
-            <div class="modal-footer">
-                <button type="submit" class="btn-primary">생성하기</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-    <div id="recommendation-modal" class="modal-backdrop" style="display: none;">
-        ... (생략) ...
-    </div>
-
     <script src="/js/navbar.js"></script>
     <script>
-        const currentUserId = '<?php echo $current_user_id; ?>';
-
-        // --- 필요한 DOM 요소들 선택 ---
-        const createModal = document.getElementById('create-modal');
-        const detailsModal = document.getElementById('details-modal');
-        const openCreateModalBtn = document.getElementById('open-create-modal-btn');
-        const meetingCardsContainer = document.getElementById('meeting-cards-container');
-        
-        // --- 모달 관리 함수 ---
-        const openModal = (modal) => modal.style.display = 'flex';
-        const closeModal = (modal) => modal.style.display = 'none';
-
-        // '새 모임 만들기' 버튼 클릭 시 모달 열기
-        openCreateModalBtn.addEventListener('click', () => openModal(createModal));
-
-        // 모달의 닫기 버튼 또는 배경 클릭 시 모달 닫기
-        document.querySelectorAll('.modal-backdrop').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target.classList.contains('modal-backdrop') || e.target.classList.contains('modal-close-btn')) {
-                    closeModal(modal);
-                }
-            });
-        });
-
-        // --- 추천 모달 기능 (변경 없음) ---
-        // ... (생략) ...
-
-        // --- 상세보기 기능 (이벤트 리스너 변경) ---
-        meetingCardsContainer.addEventListener('click', (e) => {
-            const card = e.target.closest('.meeting-card');
-            if (!card) {
-                return;
-            }
-            
-            const id = card.dataset.id;
-            const title = card.querySelector('.card-title').textContent;
-            const description = card.querySelector('.card-description-full').textContent;
-            const category = card.dataset.category;
-            const members = card.querySelector('.member-count').textContent.trim();
-            const location = card.dataset.location;
-            const organizer = card.querySelector('.organizer-nickname-hidden')?.textContent || '정보 없음';
-            const imgSrc = card.querySelector('.card-image img').src;
-            const meetingDateTime = card.querySelector('.meeting-datetime-hidden').textContent.trim();
-            
-            const isJoined = card.dataset.isJoined === 'true';
-            const organizerId = card.dataset.organizerId;
-            const isFull = card.dataset.isFull === 'true';
-
-            const statusText = isFull ? '모집완료' : '모집중';
-            const statusClass = isFull ? 'completed' : 'recruiting';
-
-            document.getElementById('modal-details-title').textContent = title;
-            document.getElementById('modal-details-description').textContent = description;
-            document.getElementById('modal-details-category').textContent = category;
-            document.getElementById('modal-details-status').textContent = statusText;
-            document.getElementById('modal-details-status').className = 'card-status ' + statusClass;
-            document.getElementById('modal-details-datetime').textContent = meetingDateTime;
-            document.getElementById('modal-details-location').textContent = location;
-            document.getElementById('modal-details-members').textContent = members;
-            document.getElementById('modal-details-organizer').textContent = organizer;
-            document.getElementById('modal-details-img').src = imgSrc;
-            
-            const modalFooter = document.getElementById('modal-details-footer');
-            modalFooter.innerHTML = '';
-
-            if (currentUserId === organizerId) {
-                modalFooter.innerHTML = `
-                    <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까? 복구할 수 없습니다.');">
-                        <input type="hidden" name="meeting_id" value="${id}">
-                        <button type="submit" class="btn-danger">모임 삭제하기</button>
-                    </form>
-                `;
-            } else if (isJoined) {
-                modalFooter.innerHTML = `
-                    <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
-                        <input type="hidden" name="meeting_id" value="${id}">
-                        <button type="submit" class="btn-cancel">신청 취소</button>
-                    </form>
-                `;
-            } else {
-                const joinButton = document.createElement('button');
-                joinButton.type = 'submit';
-                joinButton.className = 'btn-primary';
-                joinButton.textContent = '신청하기';
-                if (isFull) {
-                    joinButton.disabled = true;
-                    joinButton.textContent = '모집완료';
-                }
-
-                const form = document.createElement('form');
-                form.action = 'join_meeting.php';
-                form.method = 'POST';
-                form.innerHTML = `<input type="hidden" name="meeting_id" value="${id}">`;
-                form.appendChild(joinButton);
-                modalFooter.appendChild(form);
-            }
-            
-            openModal(detailsModal);
-
-            const participantsList = document.getElementById('modal-participants-list');
-            participantsList.innerHTML = '<li>참여 멤버를 불러오는 중...</li>';
-
-            fetch(`get_participants.php?meeting_id=${id}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        participantsList.innerHTML = '<li>참여자 정보를 불러오는데 실패했습니다.</li>';
-                        console.error(data.error);
-                        return;
-                    }
-                    
-                    if (data.length > 0) {
-                        participantsList.innerHTML = data.map(participant => `<li>${participant}</li>`).join('');
-                    } else {
-                        participantsList.innerHTML = '<li>아직 참여 멤버가 없습니다.</li>';
-                    }
-                })
-                .catch(error => {
-                    participantsList.innerHTML = '<li>참여자 정보를 불러오는 중 오류가 발생했습니다.</li>';
-                    console.error('Error fetching participants:', error);
-                });
-        });
-
-        // --- 검색 및 필터 기능 (필터 로직 수정) ---
+        // --- 검색 및 필터 기능 ---
         const searchInput = document.getElementById('search-input');
         const searchButton = document.getElementById('search-button');
         const categoryFilterContainer = document.querySelector('.category-filters');
@@ -397,7 +156,8 @@ try {
             const activeCategoryBtn = categoryFilterContainer.querySelector('.filter-btn.active');
             const selectedCategory = activeCategoryBtn ? activeCategoryBtn.dataset.category : '전체';
 
-            document.querySelectorAll('.meeting-card').forEach(card => {
+            document.querySelectorAll('.meeting-card-link').forEach(link => {
+                const card = link.querySelector('.meeting-card');
                 const title = card.querySelector('.card-title').textContent.toLowerCase();
                 const cardCategory = card.dataset.category;
 
@@ -405,9 +165,9 @@ try {
                 const categoryMatch = (selectedCategory === '전체') || (cardCategory === selectedCategory);
 
                 if (searchMatch && categoryMatch) {
-                    card.style.display = 'flex'; // display: flex로 변경
+                    link.style.display = 'block';
                 } else {
-                    card.style.display = 'none';
+                    link.style.display = 'none';
                 }
             });
         }
@@ -438,31 +198,6 @@ try {
 
         searchButton.addEventListener('click', applyFilters);
         searchInput.addEventListener('keyup', applyFilters); // 실시간 검색
-
-        const fileInput = document.getElementById('create-image');
-        const fileNameSpan = document.querySelector('.file-upload-name');
-        if (fileInput && fileNameSpan) {
-            fileInput.addEventListener('change', function() {
-                if (this.files && this.files.length > 0) {
-                    fileNameSpan.textContent = this.files[0].name;
-                } else {
-                    fileNameSpan.textContent = '선택된 파일 없음';
-                }
-            });
-        }
-
-        // 폼 제출 유효성 검사
-        const createMeetingForm = document.getElementById('create-meeting-form');
-        if (createMeetingForm) {
-            createMeetingForm.addEventListener('submit', function(event) {
-                // 폼 유효성 검사를 통과하지 못하면 기본 제출 동작을 막음
-                if (!this.checkValidity()) {
-                    event.preventDefault();
-                    // 브라우저의 내장 유효성 검사 UI를 강제로 표시
-                    this.reportValidity();
-                }
-            });
-        }
     </script>
 </body>
 </html>
