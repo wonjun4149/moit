@@ -105,11 +105,15 @@ def prepare_query_node(state: MeetingMatchingState):
     }
 
 def retrieve_node(state: MeetingMatchingState):
-    logging.info(f"--- (모임 매칭) 2. 검색 노드 ({state['rewrite_count']+1}번째) ---")
+    logging.info(f"--- (모임 매칭) 2. 검색 노드 ({state.get('rewrite_count', 0)+1}번째) ---")
     meeting_index_name = os.getenv("PINECONE_INDEX_NAME_MEETING")
     embedding_function = OpenAIEmbeddings(model='text-embedding-3-large')
     vector_store = PineconeVectorStore.from_existing_index(index_name=meeting_index_name, embedding=embedding_function)
-    retriever = vector_store.as_retriever(search_type="similarity_score_threshold", search_kwargs={'score_threshold': 0.75, 'k': 2})
+  
+    retriever = vector_store.as_retriever(
+        search_type="similarity_score_threshold", 
+        search_kwargs={'score_threshold': 0.7, 'k': 2} 
+    )
     context = retriever.invoke(state["query"])
     return {"context": context}
 
@@ -199,24 +203,23 @@ meeting_matching_agent = builder.compile()
 @tool
 def run_meeting_matching_agent_tool(meeting_info: dict) -> str:
     """
-    사용자가 만들려는 모임의 상세 정보(딕셔너리)를 입력받아, Self-RAG 기반의 지능형 에이전트를 실행하여 유사 모임을 찾아 추천 결과를 JSON 문자열로 반환합니다.
-    'meeting_info' 딕셔너리에는 'title', 'description', 'time', 'location' 키가 포함되어야 합니다.
+    사용자가 만들려는 모임의 상세 정보(딕셔셔너리)를 입력받아, Self-RAG 기반의 지능형 에이전트를 실행하여 유사 모임을 찾아 추천 결과를 JSON 문자열로 반환합니다.
     """
     logging.info(f"--- 🤖 'Self-RAG 모임 매칭 전문가'를 호출합니다. 입력: {meeting_info} ---")
     try:
+        # [★수정된 핵심 부분★]
+        # 에이전트가 모든 루프를 마치고 내놓은 최종 답변을 그대로 신뢰하고 반환합니다.
+        # 불필요한 'is_helpful' 외부 검증 로직을 제거합니다.
         final_state = meeting_matching_agent.invoke(meeting_info, {"recursion_limit": 5})
         logging.info("--- ✅ Self-RAG 모임 매칭이 성공적으로 완료되었습니다. ---")
         
-        # 최종 결정이 unhelpful일 경우, 빈 추천을 반환하는 로직 추가
-        if final_state.get("is_helpful") != "helpful":
-            logging.info("--- 최종 결정이 'helpful'이 아니므로, 빈 추천안을 반환합니다. ---")
-            return json.dumps({"summary": "", "recommendations": []})
-        else:
-            return final_state.get("answer", json.dumps({"summary": "오류: 최종 답변을 생성하지 못했습니다.", "recommendations": []}))
+        # 에이전트의 최종 답변을 그대로 반환
+        return final_state.get("answer", json.dumps({"summary": "오류: 최종 답변을 생성하지 못했습니다.", "recommendations": []}))
             
     except Exception as e:
         logging.error(f"Self-RAG 모임 매칭 에이전트 실행 중 오류 발생: {e}", exc_info=True)
         return json.dumps({"summary": "모임 추천 중 심각한 오류가 발생했습니다.", "recommendations": []})
+
 
 # 전문가 2: 사진 분석 전문가
 @tool
