@@ -94,16 +94,14 @@ try {
                                     $status_class = $isRecruiting ? 'recruiting' : 'completed';
                                 ?>
                                 <li>
-                                    <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-item-link">
-                                        <div class="meeting-info">
-                                            <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
-                                            <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
-                                        </div>
-                                        <div class="meeting-status">
-                                            <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
-                                            <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
-                                        </div>
+                                    <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-info">
+                                        <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
+                                        <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
                                     </a>
+                                    <div class="meeting-status">
+                                        <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                                        <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
+                                    </div>
                                     <div class="meeting-actions">
                                         <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까? 복구할 수 없습니다.');">
                                             <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
@@ -129,17 +127,15 @@ try {
                                     $status_class = $isRecruiting ? 'recruiting' : 'completed';
                                 ?>
                                 <li>
-                                    <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-item-link">
-                                        <div class="meeting-info">
-                                            <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
-                                            <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
-                                            <span class="organizer"> (개설자: <?php echo htmlspecialchars($meeting['organizer_nickname']); ?>)</span>
-                                        </div>
-                                        <div class="meeting-status">
-                                            <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
-                                            <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
-                                        </div>
+                                    <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-info">
+                                        <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
+                                        <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
+                                        <span class="organizer"> (개설자: <?php echo htmlspecialchars($meeting['organizer_nickname']); ?>)</span>
                                     </a>
+                                    <div class="meeting-status">
+                                        <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                                        <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
+                                    </div>
                                     <div class="meeting-actions">
                                         <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
                                             <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
