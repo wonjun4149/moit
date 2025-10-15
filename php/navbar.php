@@ -1,5 +1,13 @@
-<?php $currentPage = basename($_SERVER['PHP_SELF']); ?>
-<nav class="navbar">
+<?php 
+$currentPage = basename($_SERVER['PHP_SELF']); 
+
+// [수정] 현재 페이지가 index.php이면 'navbar-dark' 클래스를 추가
+$navClass = 'navbar';
+if ($currentPage == 'index.php') {
+    $navClass .= ' navbar-dark';
+}
+?>
+<nav class="<?php echo $navClass; ?>">
     <div class="nav-container">
         <div class="nav-left">
             <div class="hamburger">
@@ -18,11 +26,9 @@
             <?php if (isLoggedIn()): ?>
                 <span class="welcome-msg">환영합니다, <?php echo htmlspecialchars($_SESSION['user_nickname']); ?>님!</span>
                 <a href="/php/mypage.php" class="nav-btn">마이페이지</a> <a href="/php/logout.php" class="nav-btn logout-btn">로그아웃</a>
-                <button class="profile-btn"></button>
             <?php else: ?>
                 <a href="/php/login.php" class="nav-btn">로그인</a>
                 <a href="/php/register.php" class="nav-btn">회원가입</a>
-                <button class="profile-btn"></button>
             <?php endif; ?>
         </div>
     </div>
