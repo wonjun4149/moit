@@ -85,7 +85,7 @@ def prepare_query_node(state: MeetingMatchingState):
         "[작성 가이드]\n"
         "- '제목'과 '설명'에 담긴 핵심 활동이나 주제를 가장 중요한 키워드로 삼으세요.\n"
         "- '장소'는 중요한 참고 정보이지만, 너무 구체적인 장소 이름보다는 더 넓은 지역(예: '서울', '강남')을 포함하는 것이 좋습니다.\n"
-        "- '시간' 정보는 검색어에 포함하지 않아도 좋습니다."
+        "- '시간' 정보는 비슷한 시간대 이거나 가까운 날짜나 시간이면 좋습니다."
     )
     chain = prompt | llm_for_meeting | StrOutputParser()
     better_query = chain.invoke({
