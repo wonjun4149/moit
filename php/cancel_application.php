@@ -13,6 +13,7 @@ if (!isLoggedIn()) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['meeting_id'])) {
     $meeting_id = $_POST['meeting_id'];
     $user_id = $_SESSION['user_id'];
+    $source = $_POST['source'] ?? 'meeting'; // 리디렉션 소스 확인
 
     try {
         $pdo = getDBConnection();
@@ -36,7 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['meeting_id'])) {
     $_SESSION['message_type'] = "error";
 }
 
-// 이전 페이지(모임 페이지)로 리디렉션
-header('Location: meeting.php');
+// 소스에 따라 리디렉션
+if (isset($source) && $source == 'mypage') {
+    header('Location: mypage.php');
+} else {
+    header('Location: meeting.php');
+}
 exit;
 ?>

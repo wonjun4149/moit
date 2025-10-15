@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['meeting_id'])) {
     
     $meeting_id = $_POST['meeting_id'];
     $user_id = $_SESSION['user_id'];
+    $source = $_POST['source'] ?? 'meeting'; // 리디렉션 소스 확인
 
     try {
         $pdo = getDBConnection();
@@ -40,8 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['meeting_id'])) {
             $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
 
-            // 7. 모임 목록 페이지로 리다이렉트
-            redirect('meeting.php');
+            // 7. 소스에 따라 리디렉션
+            if ($source == 'mypage') {
+                redirect('mypage.php');
+            } else {
+                redirect('meeting.php');
+            }
 
         } else {
             // 개설자가 아니거나 모임이 없는 경우

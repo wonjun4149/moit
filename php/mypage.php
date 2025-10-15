@@ -22,8 +22,7 @@ try {
         SELECT 
             m.id, m.title, m.description, m.category, m.location, 
             m.max_members, m.image_path, m.created_at, m.organizer_id,
-            (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) + 1 AS current_members,
-            '" . htmlspecialchars($_SESSION['user_nickname']) . "' AS organizer_nickname
+            (SELECT COUNT(*) FROM meeting_participants WHERE meeting_id = m.id) + 1 AS current_members
         FROM meetings m
         WHERE m.organizer_id = ?
         ORDER BY m.created_at DESC
@@ -95,14 +94,22 @@ try {
                                     $status_class = $isRecruiting ? 'recruiting' : 'completed';
                                 ?>
                                 <li>
-                                    <div class="meeting-info">
-                                        <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
-                                        <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
-                                    </div>
-                                    <div class="meeting-status">
-                                        <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
-                                        <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
-                                        <button class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
+                                    <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-item-link">
+                                        <div class="meeting-info">
+                                            <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
+                                            <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
+                                        </div>
+                                        <div class="meeting-status">
+                                            <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                                            <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
+                                        </div>
+                                    </a>
+                                    <div class="meeting-actions">
+                                        <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까? 복구할 수 없습니다.');">
+                                            <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
+                                            <input type="hidden" name="source" value="mypage">
+                                            <button type="submit" class="btn-danger">삭제</button>
+                                        </form>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
@@ -122,15 +129,23 @@ try {
                                     $status_class = $isRecruiting ? 'recruiting' : 'completed';
                                 ?>
                                 <li>
-                                    <div class="meeting-info">
-                                        <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
-                                        <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
-                                        <span class="organizer"> (개설자: <?php echo htmlspecialchars($meeting['organizer_nickname']); ?>)</span>
-                                    </div>
-                                    <div class="meeting-status">
-                                        <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
-                                        <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
-                                        <button class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
+                                    <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-item-link">
+                                        <div class="meeting-info">
+                                            <span class="category-tag"><?php echo htmlspecialchars($meeting['category']); ?></span>
+                                            <strong class="meeting-title"><?php echo htmlspecialchars($meeting['title']); ?></strong>
+                                            <span class="organizer"> (개설자: <?php echo htmlspecialchars($meeting['organizer_nickname']); ?>)</span>
+                                        </div>
+                                        <div class="meeting-status">
+                                            <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                                            <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
+                                        </div>
+                                    </a>
+                                    <div class="meeting-actions">
+                                        <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
+                                            <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
+                                            <input type="hidden" name="source" value="mypage">
+                                            <button type="submit" class="btn-cancel">신청 취소</button>
+                                        </form>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
@@ -140,37 +155,6 @@ try {
             </div>
         </div>
     </main>
-
-    <div id="details-modal" class="modal-backdrop" style="display: none;">
-        <div class="modal-content">
-            <button class="modal-close-btn">&times;</button>
-            <img id="modal-details-img" src="" alt="모임 이미지" class="modal-img">
-            <div class="modal-header">
-                <h2 id="modal-details-title"></h2>
-                <div>
-                    <span id="modal-details-category" class="card-category"></span>
-                    <span id="modal-details-status" class="card-status"></span>
-                </div>
-            </div>
-            <div class="modal-body">
-                <p id="modal-details-description"></p>
-                <div class="modal-details-info">
-                    <span>📍 장소: <strong id="modal-details-location"></strong></span>
-                    <span>👥 인원: <strong id="modal-details-members"></strong></span>
-                    <span>👤 개설자: <strong id="modal-details-organizer"></strong></span>
-                </div>
-                <div class="modal-details-participants">
-                    <h4>참여자 목록</h4>
-                    <ul id="modal-details-participants-list">
-                        <!-- 참여자 닉네임이 여기에 동적으로 추가됩니다. -->
-                    </ul>
-                </div>
-            </div>
-            <div class="modal-footer" id="modal-details-footer">
-                <!-- 버튼이 동적으로 여기에 추가됩니다. -->
-            </div>
-        </div>
-    </div>
 
     <script src="/js/navbar.js"></script>
     <script>
@@ -192,72 +176,6 @@ try {
                         pane.classList.remove('active');
                     }
                 });
-            });
-        });
-
-        // --- 상세보기 모달 기능 ---
-        const detailsModal = document.getElementById('details-modal');
-        const meetingLists = document.querySelectorAll('.meeting-list');
-
-        const openModal = (modal) => modal.style.display = 'flex';
-        const closeModal = (modal) => modal.style.display = 'none';
-
-        detailsModal.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-backdrop') || e.target.classList.contains('modal-close-btn')) {
-                closeModal(detailsModal);
-            }
-        });
-
-        meetingLists.forEach(list => {
-            list.addEventListener('click', e => {
-                if (!e.target.classList.contains('btn-details')) return;
-
-                const meetingData = JSON.parse(e.target.dataset.meeting);
-                
-                const isRecruiting = meetingData.current_members < meetingData.max_members;
-                const status_text = isRecruiting ? '모집중' : '모집완료';
-                const status_class = isRecruiting ? 'recruiting' : 'completed';
-
-                document.getElementById('modal-details-title').textContent = meetingData.title;
-                document.getElementById('modal-details-description').textContent = meetingData.description;
-                document.getElementById('modal-details-category').textContent = meetingData.category;
-                document.getElementById('modal-details-status').textContent = status_text;
-                document.getElementById('modal-details-status').className = 'card-status ' + status_class;
-                document.getElementById('modal-details-location').textContent = meetingData.location;
-                document.getElementById('modal-details-members').textContent = `${meetingData.current_members} / ${meetingData.max_members}`;
-                document.getElementById('modal-details-organizer').textContent = meetingData.organizer_nickname;
-                document.getElementById('modal-details-img').src = `../${meetingData.image_path || 'assets/default_image.png'}`;
-
-                const modalFooter = document.getElementById('modal-details-footer');
-                modalFooter.innerHTML = ''; // 기존 버튼 삭제
-
-                openModal(detailsModal);
-
-                // 참여자 목록 가져오기
-                const participantsList = document.getElementById('modal-details-participants-list');
-                participantsList.innerHTML = '<li>목록을 불러오는 중...</li>';
-
-                fetch(`get_participants.php?meeting_id=${meetingData.id}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        participantsList.innerHTML = '';
-                        if (data.error) {
-                            participantsList.innerHTML = '<li>참여자 정보를 가져오는데 실패했습니다.</li>';
-                            console.error(data.error);
-                        } else if (data.length > 0) {
-                            data.forEach(participant => {
-                                const li = document.createElement('li');
-                                li.textContent = participant;
-                                participantsList.appendChild(li);
-                            });
-                        } else {
-                            participantsList.innerHTML = '<li>아직 참여자가 없습니다.</li>';
-                        }
-                    })
-                    .catch(error => {
-                        participantsList.innerHTML = '<li>참여자 정보를 가져오는데 실패했습니다.</li>';
-                        console.error('Error fetching participants:', error);
-                    });
             });
         });
     </script>
