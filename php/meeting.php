@@ -390,6 +390,19 @@ try {
                 }
             });
         }
+
+        // 폼 제출 유효성 검사
+        const createMeetingForm = document.getElementById('create-meeting-form');
+        if (createMeetingForm) {
+            createMeetingForm.addEventListener('submit', function(event) {
+                // 폼 유효성 검사를 통과하지 못하면 기본 제출 동작을 막음
+                if (!this.checkValidity()) {
+                    event.preventDefault();
+                    // 브라우저의 내장 유효성 검사 UI를 강제로 표시
+                    this.reportValidity();
+                }
+            });
+        }
     </script>
 </body>
 </html>
