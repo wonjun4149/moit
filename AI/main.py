@@ -1,4 +1,4 @@
-# main_final.py (정보 흐름 최적화, 최종 완성본)
+# main_hybrid.py (두 아키텍처의 장점만을 결합한 최종 완성본)
 
 # --- 1. 기본 라이브러리 import ---
 from fastapi import FastAPI, HTTPException
@@ -28,9 +28,9 @@ from langchain_core.documents import Document
 load_dotenv()
 
 app = FastAPI(
-    title="MOIT AI Agent Server v3.1",
-    description="정보 흐름이 최적화된 최종 감독관 시스템",
-    version="3.1.0",
+    title="MOIT AI Hybrid Agent Server",
+    description="라우터와 ReAct Agent가 결합된 하이브리드 AI 시스템",
+    version="4.0.0",
 )
 
 # --- CORS 미들웨어 추가 ---
@@ -57,9 +57,9 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.4)
 llm_for_meeting = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
-# --- 5. [복원] '모임 매칭 전문가(Self-RAG SubGraph)' 전체 정의 ---
+# --- 6. 전문가 #1: Self-RAG 모임 매칭 에이전트 ---
 
-# 5-1. 모임 매칭 전문가의 State 정의
+# 6-1. 모임 매칭 전문가의 State 정의
 class MeetingMatchingState(TypedDict):
     title: str
     description: str
@@ -71,7 +71,7 @@ class MeetingMatchingState(TypedDict):
     is_helpful: str
     rewrite_count: int
 
-# 5-2. 모임 매칭 전문가의 각 노드(기능)들 정의
+# 6-2. 모임 매칭 전문가의 각 노드(기능)들 정의
 def prepare_query_node(state: MeetingMatchingState):
     logging.info("--- (모임 매칭) 1. 검색어 생성 노드 ---")
     prompt = ChatPromptTemplate.from_template(
@@ -94,7 +94,6 @@ def prepare_query_node(state: MeetingMatchingState):
         "time": state.get("time", ""),
         "location": state.get("location", "")
     })
-    # 초기 상태를 설정합니다.
     return {
         "title": state.get("title", ""),
         "description": state.get("description", ""),
@@ -109,14 +108,12 @@ def retrieve_node(state: MeetingMatchingState):
     meeting_index_name = os.getenv("PINECONE_INDEX_NAME_MEETING")
     embedding_function = OpenAIEmbeddings(model='text-embedding-3-large')
     vector_store = PineconeVectorStore.from_existing_index(index_name=meeting_index_name, embedding=embedding_function)
-  
     retriever = vector_store.as_retriever(
-        search_type="similarity_score_threshold", 
-        search_kwargs={'score_threshold': 0.7, 'k': 2} 
+        search_type="similarity_score_threshold",
+        search_kwargs={'score_threshold': 0.7, 'k': 3}
     )
     context = retriever.invoke(state["query"])
     return {"context": context}
-
 
 def generate_node(state: MeetingMatchingState):
     logging.info("--- (모임 매칭) 3. 답변 생성 노드 ---")
@@ -139,7 +136,6 @@ def generate_node(state: MeetingMatchingState):
 2. [검색된 유사 모임 정보]와 [사용자가 만들려는 모임 정보]를 비교하여, 정말로 유사하다고 판단되는 모임만 골라주세요.
 3. 사용자가 혹할 만한 매력적인 추천 문구를 작성해주세요.
 4. 최종 답변은 반드시 아래와 같은 JSON 형식으로만 반환해야 합니다. 추가적인 설명은 절대 붙이지 마세요.
-
 당신의 전체 응답은 다른 어떤 텍스트도 없이, 오직 '{{'로 시작해서 '}}'로 끝나는 유효한 JSON 객체여야 합니다.
 
 [JSON 형식]
@@ -168,7 +164,6 @@ def check_helpfulness_node(state: MeetingMatchingState):
     logging.info("--- (모임 매칭) 4. 유용성 검증 노드 ---")
     prompt = ChatPromptTemplate.from_template("당신은 AI가 생성한 추천이 사용자에게 정말 도움이 되는지 판단하는 검증 AI입니다. 'helpful' 또는 'unhelpful' 둘 중 하나로만 답변해주세요.\n\n[AI의 추천 내용]\n{answer}\n\n[사용자의 원래 요청]\n제목: {title}\n설명: {description}\n\n[검증 기준]\n- [AI 답변]의 `recommendations` 배열이 비어있지 않은지 확인하세요.\n- [AI 답변]의 `summary`가 긍정적인 추천 문구인지 확인하세요. (예: '비슷한 모임이 있어요' 등)\n- 위 두 조건이 모두 충족되고, 추천된 모임의 주제가 [원본 질문]과 관련이 있다면 'helpful'입니다.\n- 그 외 모든 경우는 'unhelpful'입니다.")
     chain = prompt | llm_for_meeting | StrOutputParser()
-    # 파싱 오류를 방지하기 위해 strip()과 lower()를 추가합니다.
     raw_helpful = chain.invoke({"answer": state["answer"], "title": state["title"], "description": state["description"]})
     is_helpful = "helpful" if "helpful" in raw_helpful.strip().lower() else "unhelpful"
     return {"is_helpful": is_helpful}
@@ -181,52 +176,30 @@ def rewrite_query_node(state: MeetingMatchingState):
     return {"query": new_query, "rewrite_count": state["rewrite_count"] + 1}
 
 def decide_to_continue(state: MeetingMatchingState):
-    return "end" if state["rewrite_count"] > 1 or state["is_helpful"] == "helpful" else "continue"
+    return "end" if state.get("rewrite_count", 0) > 1 or state.get("is_helpful") == "helpful" else "continue"
 
-# 5-3. 모임 매칭 전문가 그래프(SubGraph) 조립
-builder = StateGraph(MeetingMatchingState)
-builder.add_node("prepare_query", prepare_query_node)
-builder.add_node("retrieve", retrieve_node)
-builder.add_node("generate", generate_node)
-builder.add_node("check_helpfulness", check_helpfulness_node)
-builder.add_node("rewrite_query", rewrite_query_node)
-builder.set_entry_point("prepare_query")
-builder.add_edge("prepare_query", "retrieve")
-builder.add_edge("retrieve", "generate")
-builder.add_edge("generate", "check_helpfulness")
-builder.add_conditional_edges("check_helpfulness", decide_to_continue, {"continue": "rewrite_query", "end": END})
-builder.add_edge("rewrite_query", "retrieve")
-meeting_matching_agent = builder.compile()
-
-
-# --- '모임 매칭 전문가'를 Tool로 포장하는 부분 ---
-@tool
-def run_meeting_matching_agent_tool(meeting_info: dict) -> str:
-    """
-    사용자가 만들려는 모임의 상세 정보(딕셔셔너리)를 입력받아, Self-RAG 기반의 지능형 에이전트를 실행하여 유사 모임을 찾아 추천 결과를 JSON 문자열로 반환합니다.
-    """
-    logging.info(f"--- 🤖 'Self-RAG 모임 매칭 전문가'를 호출합니다. 입력: {meeting_info} ---")
-    try:
-        # [★수정된 핵심 부분★]
-        # 에이전트가 모든 루프를 마치고 내놓은 최종 답변을 그대로 신뢰하고 반환합니다.
-        # 불필요한 'is_helpful' 외부 검증 로직을 제거합니다.
-        final_state = meeting_matching_agent.invoke(meeting_info, {"recursion_limit": 5})
-        logging.info("--- ✅ Self-RAG 모임 매칭이 성공적으로 완료되었습니다. ---")
-        
-        # 에이전트의 최종 답변을 그대로 반환
-        return final_state.get("answer", json.dumps({"summary": "오류: 최종 답변을 생성하지 못했습니다.", "recommendations": []}))
-            
-    except Exception as e:
-        logging.error(f"Self-RAG 모임 매칭 에이전트 실행 중 오류 발생: {e}", exc_info=True)
-        return json.dumps({"summary": "모임 추천 중 심각한 오류가 발생했습니다.", "recommendations": []})
+# 6-3. 모임 매칭 전문가 그래프 조립
+builder_meeting = StateGraph(MeetingMatchingState)
+builder_meeting.add_node("prepare_query", prepare_query_node)
+builder_meeting.add_node("retrieve", retrieve_node)
+builder_meeting.add_node("generate", generate_node)
+builder_meeting.add_node("check_helpfulness", check_helpfulness_node)
+builder_meeting.add_node("rewrite_query", rewrite_query_node)
+builder_meeting.set_entry_point("prepare_query")
+builder_meeting.add_edge("prepare_query", "retrieve")
+builder_meeting.add_edge("retrieve", "generate")
+builder_meeting.add_edge("generate", "check_helpfulness")
+builder_meeting.add_conditional_edges("check_helpfulness", decide_to_continue, {"continue": "rewrite_query", "end": END})
+builder_meeting.add_edge("rewrite_query", "retrieve")
+meeting_matching_agent = builder_meeting.compile()
 
 
-# 전문가 2: 사진 분석 전문가
+# --- 7. 전문가 #2: 멀티모달 취미 추천 에이전트 (ReAct 감독관) ---
+
+# 7-1. 취미 추천에 필요한 도구(Tool)들 정의
 @tool
 def analyze_photo_tool(image_paths: list[str]) -> str:
-    """
-    사용자의 사진(이미지 파일 경로 리스트)을 입력받아, 그 사람의 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다.
-    """
+    """사용자의 사진을 분석하여 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다."""
     from PIL import Image
     try:
         logging.info(f"--- 📸 '사진 분석 전문가'가 작업을 시작합니다. (이미지 {len(image_paths)}개) ---")
@@ -240,16 +213,13 @@ def analyze_photo_tool(image_paths: list[str]) -> str:
         logging.error(f"사진 분석 중 오류 발생: {e}", exc_info=True)
         return f"오류: 사진 분석 중 문제가 발생했습니다: {e}"
 
-# 전문가 3: 설문 분석 전문가
 def _normalize(value, min_val, max_val):
     if value is None: return None
     return round((value - min_val) / (max_val - min_val), 4)
 
 @tool
 def analyze_survey_tool(survey_json_string: str) -> dict:
-    """
-    사용자의 설문 응답(JSON 문자열)을 입력받아, 수치적으로 정규화된 성향 프로필(딕셔너리)을 반환합니다.
-    """
+    """사용자의 설문 응답을 분석하여 정규화된 성향 프로필을 반환합니다."""
     logging.info("--- 📊 '설문 분석 전문가'가 작업을 시작합니다. ---")
     try:
         responses = json.loads(survey_json_string)
@@ -285,16 +255,12 @@ def analyze_survey_tool(survey_json_string: str) -> dict:
         logging.error(f"설문 분석 중 오류 발생: {e}", exc_info=True)
         return {"error": f"설문 분석 중 오류가 발생했습니다: {e}"}
 
-# 전문가 4: 설문 요약 전문가
 @tool
 def summarize_survey_profile_tool(survey_profile: dict) -> str:
-    """
-    'analyze_survey_tool'로부터 받은 정량적인 사용자 프로필(딕셔너리)을 입력받아,
-    사람이 이해하기 쉬운 자연스러운 문장의 텍스트 요약 보고서로 변환합니다.
-    """
+    """정량적인 사용자 프로필을 사람이 이해하기 쉬운 텍스트 요약 보고서로 변환합니다."""
     logging.info("--- ✍️ '설문 요약 전문가'가 작업을 시작합니다. ---")
     try:
-        summarizer_prompt = ChatPromptTemplate.from_template("당신은 사용자의 성향 분석 데이터를 해석하여, 핵심적인 특징을 요약하는 프로파일러입니다. 아래 <사용자 프로필 데이터>를 보고, 이 사람의 성향을 한두 문단의 자연스러운 문장으로 요약해주세요.\n<사용자 프로필 데이터>\n{profile}\n[데이터 항목 설명] - FSC: 현실적인 제약 조건 (0에 가까울수록 제약이 큼), PSSR: 심리적 상태 (0에 가까울수록 안정적), MP: 활동 동기, DLS: 선호하는 사회성\n[요약 예시] '이 사용자는 현재 시간과 예산, 에너지 등 현실적인 제약이 크며, 사회적 불안감이 높아 혼자만의 활동을 통해 회복과 안정을 얻고 싶어하는 성향이 강하게 나타납니다.' 와 같이 간결하게 작성해주세요.")
+        summarizer_prompt = ChatPromptTemplate.from_template("당신은 사용자의 성향 분석 데이터를 해석하여, 핵심적인 특징을 요약하는 프로파일러입니다. 아래 <사용자 프로필 데이터>를 보고, 이 사람의 성향을 한두 문단의 자연스러운 문장으로 요약해주세요.\n<사용자 프로필 데이터>\n{profile}\n[데이터 항목 설명] - FSC: 현실적인 제약 조건, PSSR: 심리적 상태, MP: 활동 동기, DLS: 선호하는 사회성\n[요약 예시] '이 사용자는 현재 시간과 예산, 에너지 등 현실적인 제약이 크며, 사회적 불안감이 높아 혼자만의 활동을 통해 회복과 안정을 얻고 싶어하는 성향이 강하게 나타납니다.' 와 같이 간결하게 작성해주세요.")
         summarizer_chain = summarizer_prompt | llm | StrOutputParser()
         summary = summarizer_chain.invoke({"profile": survey_profile})
         logging.info("--- ✅ 설문 요약이 성공적으로 완료되었습니다. ---")
@@ -303,78 +269,100 @@ def summarize_survey_profile_tool(survey_profile: dict) -> str:
         logging.error(f"설문 요약 중 오류 발생: {e}", exc_info=True)
         return f"오류: 설문 요약 중 문제가 발생했습니다: {e}"
 
-
-# --- 7. 감독관(Supervisor) 에이전트 생성 ---
-tools = [
-    run_meeting_matching_agent_tool,
-    analyze_photo_tool,
-    analyze_survey_tool,
-    summarize_survey_profile_tool,
-]
-
-final_supervisor_prompt_v3_1 = """
-당신은 사용자의 다양한 요청을 이해하고, 여러 AI 전문가들을 지휘하여 최적의 답변을 만들어내는 총괄 감독관입니다.
-
-[당신이 지휘할 수 있는 전문가들]
-- `run_meeting_matching_agent_tool`: 사용자가 만들려는 모임의 상세 정보(딕셔너리)를 받아 Self-RAG 방식으로 유사 모임을 찾아 추천합니다.
-- `analyze_photo_tool`: 사진을 분석하여 사용자의 외면적 성향을 파악합니다.
-- `analyze_survey_tool`: 설문 결과를 분석하여 사용자의 내면적 성향을 정량 데이터로 변환합니다.
-- `summarize_survey_profile_tool`: 설문 분석 데이터를 사람이 이해하기 쉬운 텍스트로 요약합니다.
-
-[작업 지침]
-1.  사용자의 요청(`Human Message`)을 보고, 어떤 종류의 작업인지 명확히 파악하세요. ('유사 모임 추천' 또는 '새로운 취미 추천')
-2.  작업에 필요한 전문가들을 호출하세요.
-    - **('새로운 취미 추천'의 경우)** `analyze_survey_tool` -> `summarize_survey_profile_tool` -> `analyze_photo_tool` 순서로 호출하여 최종 답변을 생성합니다. 만약 사진이 제공되지 않으면, 사진 분석 단계를 건너뛰고 설문 분석 결과만으로 추천을 생성하세요.
-    - **('유사 모임 추천'의 경우)** 사용자의 입력 데이터(딕셔너리 형태)를 `run_meeting_matching_agent_tool` 전문가의 `meeting_info` 인자로 그대로 전달하여 호출하고, 그 결과를 반환하면 됩니다.
-3.  [매우 중요] 만약 '설문 요약'과 '사진 분석'의 결과가 서로 상반될 경우, 이 차이점을 명확히 인지하고 언급하며, 두 가지 성향을 모두 아우를 수 있는 균형 잡힌 최종 추천을 하는 것이 당신의 가장 중요한 임무입니다.
-4.  모든 전문가의 보고를 종합하여, 사용자에게 전달할 최종 답변을 완성하세요.
+# 7-2. ReAct 감독관 생성
+hobby_tools = [analyze_photo_tool, analyze_survey_tool, summarize_survey_profile_tool]
+hobby_supervisor_prompt = """당신은 사용자의 사진과 설문 결과를 종합하여 맞춤형 취미를 추천하는 AI 큐레이터입니다.
+주어진 전문가들을 활용하여 다음 단계를 순서대로 수행하세요:
+1. `analyze_survey_tool`로 설문을 분석합니다.
+2. 그 결과를 `summarize_survey_profile_tool`로 요약합니다.
+3. `analyze_photo_tool`로 사진을 분석합니다. (사진이 없다면 이 단계는 건너뜁니다.)
+4. 두 결과를 종합하여 최종 추천 메시지를 생성합니다. 두 결과가 상반될 경우, 그 차이를 언급하며 균형잡힌 추천을 하는 것이 중요합니다.
 """
+hobby_prompt = ChatPromptTemplate.from_messages([("system", hobby_supervisor_prompt), MessagesPlaceholder(variable_name="messages")])
+hobby_supervisor_agent = create_react_agent(llm, hobby_tools, prompt=hobby_prompt)
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", final_supervisor_prompt_v3_1),
-        MessagesPlaceholder(variable_name="messages"),
-    ]
+
+# --- 8. 최상위 지휘관: 마스터 에이전트 (라우터) ---
+
+# 8-1. 마스터 에이전트의 State 정의
+class MasterAgentState(TypedDict):
+    user_input: dict
+    route: str
+    final_answer: str
+
+# 8-2. 라우터 노드 정의
+def route_request(state: MasterAgentState):
+    logging.info("--- 🚦 최상위 라우터가 작업을 분배합니다. ---")
+    task = state["user_input"].get("task")
+    if task == "유사 모임 추천":
+        return {"route": "meeting_matching"}
+    elif task == "새로운 취미 추천":
+        return {"route": "hobby_recommendation"}
+    else:
+        return {"route": "error"}
+
+# 8-3. 각 전문가를 호출하는 노드 정의
+def call_meeting_matching_agent(state: MasterAgentState):
+    logging.info("--- 🤖 Self-RAG 모임 매칭 전문가를 호출합니다. ---")
+    meeting_info = state["user_input"].get("meeting_info", {})
+    final_state = meeting_matching_agent.invoke(meeting_info, {"recursion_limit": 5})
+    return {"final_answer": final_state.get("answer", "오류: 최종 답변을 생성하지 못했습니다.")}
+
+def call_hobby_supervisor_agent(state: MasterAgentState):
+    logging.info("--- 🎬 ReAct 감독관 (취미 추천)을 호출합니다. ---")
+    user_input_str = json.dumps(state["user_input"], ensure_ascii=False)
+    input_data = {"messages": [("user", f"다음 사용자 정보를 바탕으로 최종 취미 추천을 해주세요: {user_input_str}")]}
+    
+    final_answer = ""
+    for event in hobby_supervisor_agent.stream(input_data, {"recursion_limit": 15}):
+        if "messages" in event:
+            last_message = event["messages"][-1]
+            if isinstance(last_message.content, str) and not last_message.tool_calls:
+                final_answer = last_message.content
+    return {"final_answer": final_answer}
+
+def handle_error(state: MasterAgentState):
+    return {"final_answer": "오류: 'task' 필드가 올바르지 않습니다. '유사 모임 추천' 또는 '새로운 취미 추천' 중 하나를 명시해주세요."}
+
+# 8-4. 마스터 그래프 조립
+master_builder = StateGraph(MasterAgentState)
+master_builder.add_node("route_request", route_request)
+master_builder.add_node("meeting_matching", call_meeting_matching_agent)
+master_builder.add_node("hobby_recommendation", call_hobby_supervisor_agent)
+master_builder.add_node("error", handle_error)
+
+master_builder.set_entry_point("route_request")
+master_builder.add_conditional_edges(
+    "route_request",
+    lambda x: x["route"],
+    {
+        "meeting_matching": "meeting_matching",
+        "hobby_recommendation": "hobby_recommendation",
+        "error": "error"
+    }
 )
+master_builder.add_edge("meeting_matching", END)
+master_builder.add_edge("hobby_recommendation", END)
+master_builder.add_edge("error", END)
 
-supervisor_agent = create_react_agent(llm, tools, prompt=prompt)
+master_agent = master_builder.compile()
 
 
-# --- 8. API 엔드포인트 정의 ---
+# --- 9. API 엔드포인트 정의 ---
 class AgentInvokeRequest(BaseModel):
-    messages: list
+    user_input: dict
 
 @app.post("/agent/invoke")
 async def invoke_agent(request: AgentInvokeRequest):
-    """
-    사용자의 모든 요청을 받아 감독관 AI 에이전트를 실행하고 최종 답변을 반환합니다.
-    """
     try:
-        # 복잡한 딕셔너리 데이터를 json.dumps()를 사용해 하나의 문자열로 변환합니다.
-        processed_messages = []
-        for role, content in request.messages:
-            if isinstance(content, dict):
-                # content가 딕셔너리이면, JSON 문자열로 변환
-                processed_messages.append((role, json.dumps(content, ensure_ascii=False)))
-            else:
-                # 딕셔너리가 아니면(일반 텍스트 등) 그대로 사용
-                processed_messages.append((role, content))
-
-        input_data = {"messages": processed_messages}
-
-        final_answer = ""
-        for event in supervisor_agent.stream(input_data, {"recursion_limit": 15}):
-            if "messages" in event:
-                last_message = event["messages"][-1]
-                if isinstance(last_message.content, str) and not last_message.tool_calls:
-                    final_answer = last_message.content
-        
-        return {"final_answer": final_answer}
+        input_data = {"user_input": request.user_input}
+        result = master_agent.invoke(input_data)
+        return {"final_answer": result.get("final_answer", "오류: 최종 답변을 생성하지 못했습니다.")}
     except Exception as e:
         logging.error(f"Agent 실행 중 오류 발생: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"AI 에이전트 처리 중 내부 서버 오류가 발생했습니다: {str(e)}")
+        raise HTTPException(status_code=500, detail="AI 에이전트 처리 중 내부 서버 오류가 발생했습니다.")
 
-# --- 9. Pinecone DB 업데이트/삭제 엔드포인트 ---
+# --- 10. Pinecone DB 업데이트/삭제 엔드포인트 ---
 class NewMeeting(BaseModel):
     meeting_id: str
     title: str
