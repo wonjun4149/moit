@@ -17,9 +17,7 @@ $site_title = "MOIT - 소개";
 <body>
     <?php require_once 'navbar.php'; ?>
 
-    <!-- 메인 컨테이너 -->
     <main class="main-container">
-        <!-- 왼쪽 콘텐츠 -->
         <div class="left-content">
             <div class="content-wrapper">
                 <h1 class="main-title">
@@ -28,7 +26,7 @@ $site_title = "MOIT - 소개";
                 </h1>
                 
                 <div class="slogan-section">
-                    <h3 class="slogan-title">[slogan]</h3>
+                    <h3 class="slogan-title">열정의 세상, 모잇</h3>
                     <div class="slogan-line"></div>
                 </div>
 
@@ -61,17 +59,9 @@ $site_title = "MOIT - 소개";
             </div>
         </div>
 
-        <!-- 오른쪽 이미지 -->
         <div class="right-image">
-            <div class="image-placeholder">
-                <div class="basketball-court">
-                    <div class="court-lines">
-                        <div class="center-circle"></div>
-                        <div class="three-point-line"></div>
-                        <div class="free-throw-line"></div>
-                        <div class="basket"></div>
-                    </div>
-                </div>
+            <div class="image-wrapper">
+                <img src="../img/KakaoTalk_20251015_171647158_01.jpg" alt="다양한 취미를 즐기는 사람들 일러스트" class="illustration-image">
             </div>
         </div>
     </main>

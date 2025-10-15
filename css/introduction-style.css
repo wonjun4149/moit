@@ -19,6 +19,7 @@ body {
 .main-container {
     min-height: 100vh;
     display: flex;
+    align-items: center; /* 콘텐츠 수직 중앙 정렬 */
     margin-top: 70px;
     background: #ffffff;
 }
@@ -105,7 +106,6 @@ body {
     font-weight: 600;
 }
 
-/* 메인 설명 텍스트 스타일 - 더 강력한 적용 */
 .description .main-desc {
     font-weight: bold !important;
     font-size: 20px !important;
@@ -113,7 +113,6 @@ body {
     line-height: 1.6 !important;
 }
 
-/* 철학 텍스트 스타일 - 더 강력한 적용 */
 .description .philosophy {
     font-weight: bold !important;
     color: #333 !important;
@@ -125,13 +124,16 @@ body {
 
 /* 오른쪽 이미지 */
 .right-image {
-    flex: 0.8;
-    background: linear-gradient(135deg, #4A90E2, #357ABD);
+    flex: 1; /* 비율 조정 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: relative;
     overflow: hidden;
     opacity: 0;
     transform: translateX(50px);
     transition: all 0.8s ease-out;
+    padding: 40px;
 }
 
 .right-image.loaded {
@@ -139,105 +141,23 @@ body {
     transform: translateX(0);
 }
 
-.image-placeholder {
+.image-wrapper {
     width: 100%;
     height: 100%;
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* 농구 코트 CSS 그래픽 */
-.basketball-court {
-    width: 300px;
-    height: 400px;
-    background: #2E5B8A;
-    border: 3px solid #ffffff;
-    border-radius: 10px;
-    position: relative;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    transform: perspective(600px) rotateX(15deg);
-    animation: float 6s ease-in-out infinite;
+.illustration-image {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain; /* 이미지 비율 유지 */
+    animation: float 6s ease-in-out infinite; /* 간단한 애니메이션 적용 */
 }
 
-.court-lines {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-}
-
-/* 센터 서클 */
-.center-circle {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 80px;
-    height: 80px;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.center-circle::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 10px;
-    height: 10px;
-    background: #ffffff;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-}
-
-/* 3점 라인 */
-.three-point-line {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    right: 20px;
-    height: 120px;
-    border: 2px solid #ffffff;
-    border-bottom: none;
-    border-radius: 120px 120px 0 0;
-}
-
-/* 자유투 라인 */
-.free-throw-line {
-    position: absolute;
-    top: 50px;
-    left: 50%;
-    width: 80px;
-    height: 2px;
-    background: #ffffff;
-    transform: translateX(-50%);
-}
-
-/* 골대 */
-.basket {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    width: 20px;
-    height: 3px;
-    background: #ffffff;
-    transform: translateX(-50%);
-    border-radius: 2px;
-}
-
-.basket::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    width: 12px;
-    height: 12px;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    transform: translateX(-50%);
-    background: none;
-}
 
 /* 애니메이션 */
 @keyframes fadeInUp {
@@ -253,10 +173,10 @@ body {
 
 @keyframes float {
     0%, 100% {
-        transform: perspective(600px) rotateX(15deg) translateY(0px);
+        transform: translateY(0px);
     }
     50% {
-        transform: perspective(600px) rotateX(15deg) translateY(-10px);
+        transform: translateY(-15px);
     }
 }
 
@@ -271,6 +191,11 @@ body {
         padding: 40px 30px;
         flex: 1;
         justify-content: flex-start;
+        text-align: center;
+    }
+
+    .slogan-line {
+        background: #4A90E2;
     }
 
     .content-wrapper {
@@ -283,33 +208,16 @@ body {
 
     .right-image {
         height: 50vh;
-        min-height: 400px;
-    }
-
-    .basketball-court {
-        width: 250px;
-        height: 320px;
-        transform: perspective(400px) rotateX(10deg);
-    }
-
-    .center-circle {
-        width: 60px;
-        height: 60px;
-    }
-
-    .three-point-line {
-        height: 100px;
+        min-height: 350px;
+        flex: 1;
+        width: 100%;
+        padding: 20px;
     }
 }
 
 @media (max-width: 480px) {
     .left-content {
         padding: 30px 20px;
-        justify-content: flex-start;
-    }
-
-    .content-wrapper {
-        max-width: 100%;
     }
 
     .main-title {
@@ -321,15 +229,10 @@ body {
     }
 
     .description .main-desc {
-        font-size: 16px !important;
-    }
-
-    .description .main-desc {
         font-size: 18px !important;
     }
 
-    .basketball-court {
-        width: 200px;
-        height: 280px;
+    .right-image {
+        min-height: 300px;
     }
 }
