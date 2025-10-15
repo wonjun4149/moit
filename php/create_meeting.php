@@ -48,8 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // AI 응답(JSON)을 2단계로 해석
     $response_data = json_decode($agent_response_json, true);
-    $final_answer_str = $response_data['final_answer'] ?? '{}';
-    $agent_response = json_decode($final_answer_str, true);
+    // final_answer는 이미 JSON 문자열이므로, 이를 다시 디코딩합니다.
+    $agent_response = isset($response_data['final_answer']) ? json_decode($response_data['final_answer'], true) : [];
     
     // AI가 추천을 반환했는지 확인
     if (isset($agent_response['recommendations']) && !empty($agent_response['recommendations'])) {
