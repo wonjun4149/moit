@@ -153,7 +153,51 @@ try {
     </main>
 
     <div id="details-modal" class="modal-backdrop" style="display: none;">
-        ... (생략) ...
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <div class="modal-header">
+                <span id="modal-details-status" class="card-status"></span>
+                <h2 id="modal-details-title"></h2>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-container">
+                    <img id="modal-details-img" src="" alt="모임 대표 이미지">
+                </div>
+                <div class="modal-details-grid">
+                    <div class="detail-item">
+                        <strong>카테고리</strong>
+                        <span id="modal-details-category"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>일시</strong>
+                        <span id="modal-details-datetime"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>장소</strong>
+                        <span id="modal-details-location"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>인원</strong>
+                        <span id="modal-details-members"></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>개설자</strong>
+                        <span id="modal-details-organizer"></span>
+                    </div>
+                </div>
+                <p id="modal-details-description"></p>
+                
+                <div class="participants-section">
+                    <h4>참여 멤버</h4>
+                    <ul id="modal-participants-list">
+                        <!-- 참여자 목록이 여기에 동적으로 추가됩니다. -->
+                    </ul>
+                </div>
+            </div>
+            <div id="modal-details-footer" class="modal-footer">
+                <!-- 버튼이 여기에 동적으로 추가됩니다. -->
+            </div>
+        </div>
     </div>
 
     <div id="create-modal" class="modal-backdrop" style="display: none;">
