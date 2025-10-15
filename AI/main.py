@@ -165,12 +165,20 @@ def generate_node(state: MeetingMatchingState):
     return {"answer": answer}
 
 def check_helpfulness_node(state: MeetingMatchingState):
-    logging.info("--- (모임 매칭) 4. 유용성 검증 노드 ---")
-    prompt = ChatPromptTemplate.from_template("당신은 AI가 생성한 추천이 사용자에게 정말 도움이 되는지 판단하는 검증 AI입니다. 'helpful' 또는 'unhelpful' 둘 중 하나로만 답변해주세요.\n\n[AI의 추천 내용]\n{answer}\n\n[사용자의 원래 요청]\n제목: {title}\n설명: {description}\n\n[검증 기준]\n- [AI 답변]의 `recommendations` 배열이 비어있지 않은지 확인하세요.\n- [AI 답변]의 `summary`가 긍정적인 추천 문구인지 확인하세요. (예: '비슷한 모임이 있어요' 등)\n- 위 두 조건이 모두 충족되고, 추천된 모임의 주제가 [원본 질문]과 관련이 있다면 'helpful'입니다.\n- 그 외 모든 경우는 'unhelpful'입니다.")
-    chain = prompt | llm_for_meeting | StrOutputParser()
-    # 파싱 오류를 방지하기 위해 strip()과 lower()를 추가합니다.
-    raw_helpful = chain.invoke({"answer": state["answer"], "title": state["title"], "description": state["description"]})
-    is_helpful = "helpful" if "helpful" in raw_helpful.strip().lower() else "unhelpful"
+    logging.info("--- (모임 매칭) 4. 유용성 검증 노드 (단순화) ---")
+    try:
+        # LLM의 답변(JSON 문자열)을 파싱
+        answer_data = json.loads(state["answer"])
+        # 추천 목록이 비어있지 않으면 'helpful'
+        if answer_data.get("recommendations"):
+            is_helpful = "helpful"
+        else:
+            is_helpful = "unhelpful"
+    except (json.JSONDecodeError, KeyError):
+        # JSON 파싱에 실패하거나 'recommendations' 키가 없으면 'unhelpful'
+        is_helpful = "unhelpful"
+    
+    logging.info(f"--- 검증 결과: {is_helpful} ---")
     return {"is_helpful": is_helpful}
 
 def rewrite_query_node(state: MeetingMatchingState):
@@ -178,21 +186,30 @@ def rewrite_query_node(state: MeetingMatchingState):
     prompt = ChatPromptTemplate.from_template("당신은 이전 검색 결과가 만족스럽지 않아 검색어를 재작성하는 AI입니다. 사용자의 원래 의도를 바탕으로, 이전과는 다른 관점의 새로운 검색어를 제안해주세요.\n\n[이전 검색어]\n{query}")
     chain = prompt | llm_for_meeting | StrOutputParser()
     new_query = chain.invoke({"query": state["query"]})
-    return {"query": new_query, "rewrite_count": state["rewrite_count"] + 1}
+    return {"query": new_query, "rewrite_count": state.get("rewrite_count", 0) + 1}
 
 def decide_to_continue(state: MeetingMatchingState):
-    return "end" if state["rewrite_count"] > 1 or state["is_helpful"] == "helpful" else "continue"
+    # 재작성 횟수가 0번을 초과하거나(최대 2번 검색), 결과가 유용하면 종료
+    return "end" if state.get("rewrite_count", 0) > 0 or state.get("is_helpful") == "helpful" else "continue"
 
 # 5-3. 모임 매칭 전문가 그래프(SubGraph) 조립
-# 로직 단순화: 불필요한 유용성 검증 및 재작성 루프를 제거하고, 검색 -> 생성 -> 종료의 간단한 흐름으로 변경
+# 유용성 검증 로직을 복원하되, 검증 노드는 단순화된 버전으로 사용
 builder = StateGraph(MeetingMatchingState)
 builder.add_node("prepare_query", prepare_query_node)
 builder.add_node("retrieve", retrieve_node)
 builder.add_node("generate", generate_node)
+builder.add_node("check_helpfulness", check_helpfulness_node) # 단순화된 검증 노드
+builder.add_node("rewrite_query", rewrite_query_node)
 builder.set_entry_point("prepare_query")
 builder.add_edge("prepare_query", "retrieve")
 builder.add_edge("retrieve", "generate")
-builder.add_edge("generate", END) # generate 노드 이후에 바로 종료
+builder.add_edge("generate", "check_helpfulness")
+builder.add_conditional_edges(
+    "check_helpfulness", 
+    decide_to_continue, 
+    {"continue": "rewrite_query", "end": END}
+)
+builder.add_edge("rewrite_query", "retrieve")
 meeting_matching_agent = builder.compile()
 
 
