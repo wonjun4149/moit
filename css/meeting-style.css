@@ -120,6 +120,11 @@ body {
     gap: 25px;
 }
 
+.meeting-card-link {
+    text-decoration: none;
+    color: inherit;
+}
+
 /* Meeting Card 수정 */
 .meeting-card {
     background-color: #ffffff;
@@ -189,11 +194,6 @@ body {
     color: #888;
 }
 
-/* 카드 헤더, 푸터, 상태 관련 스타일 제거 또는 주석 처리 */
-.card-header, .card-footer, .card-status, .card-category {
-    display: none;
-}
-
 /* Right Section 수정 */
 .right-section {
     flex: 1;
@@ -201,6 +201,7 @@ body {
 }
 
 .btn-create-meeting {
+    display: block;
     width: 100%;
     padding: 15px 25px;
     background-color: #007bff; /* 파란색 계열로 변경 */
@@ -213,6 +214,8 @@ body {
     transition: background-color 0.2s ease;
     box-shadow: none;
     margin-bottom: 20px;
+    text-align: center;
+    text-decoration: none;
 }
 
 .btn-create-meeting:hover {
@@ -262,16 +265,24 @@ body {
     margin: 0;
 }
 
-/* meeting-style.css 파일에 아래 스타일을 추가하거나 기존 스타일을 수정하세요. */
+/* --- Form Container (새 모임 만들기) --- */
+.form-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
 
-/* 모달 제목 스타일 */
-.modal-content h2 {
-    font-size: 1.8em; /* 폰트 크기 조정 */
+.form-container h2 {
+    font-size: 1.8em;
     color: #333;
     margin-top: 0;
-    margin-bottom: 35px; /* 여백 추가 */
+    margin-bottom: 35px;
     text-align: center;
-    font-weight: 600; /* 폰트 두께 조정 */
+    font-weight: 600;
 }
 
 /* 폼 그룹 및 라벨 스타일 */
@@ -281,7 +292,7 @@ body {
 
 .form-group label {
     display: block;
-    font-weight: 500; /* 폰트 두께 보통으로 */
+    font-weight: 500;
     margin-bottom: 8px;
     color: #555;
     font-size: 0.95em;
@@ -294,10 +305,10 @@ body {
 .form-group input[type="time"],
 .form-group select,
 .form-group textarea {
-    width: 100%; /* 너비 100%로 통일 */
-    padding: 12px 15px; /* 패딩 조정 */
+    width: 100%;
+    padding: 12px 15px;
     border: 1px solid #ddd;
-    border-radius: 6px; /* border-radius 살짝 */
+    border-radius: 6px;
     font-size: 1em;
     box-sizing: border-box;
     background-color: #fff;
@@ -316,14 +327,14 @@ body {
     min-height: 120px;
 }
 
-/* --- 신규 스타일: 커스텀 파일 업로드 UI --- */
+/* 커스텀 파일 업로드 UI */
 .file-upload-wrapper {
     display: flex;
     align-items: center;
 }
 
 .file-upload-hidden {
-    display: none; /* 실제 input은 숨김 */
+    display: none;
 }
 
 .file-upload-button {
@@ -349,115 +360,52 @@ body {
     font-size: 0.9em;
 }
 
-
-/* --- 신규 스타일: 날짜/시간 입력창 그룹 --- */
+/* 날짜/시간 입력창 그룹 */
 .datetime-group {
     display: flex;
     border: 1px solid #ddd;
     border-radius: 6px;
-    overflow: hidden; /* 내부 요소가 border-radius를 넘지 않도록 */
+    overflow: hidden;
 }
 
 .datetime-group input[type="date"],
 .datetime-group input[type="time"] {
-    border: none; /* 그룹에서 테두리를 관리하므로 개별 테두리 제거 */
+    border: none;
     flex-grow: 1;
     border-radius: 0;
 }
 
 .datetime-group input[type="date"] {
-    border-right: 1px solid #ddd; /* 날짜와 시간 사이에 구분선 */
+    border-right: 1px solid #ddd;
 }
 
-/* 포커스 시 그룹 전체에 테두리 효과 */
 .datetime-group:focus-within {
     border-color: #007bff;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
 }
 
-
-/* 모달 버튼 스타일 */
-.modal-footer {
+.form-footer {
     margin-top: 30px;
-    text-align: right; /* 버튼 오른쪽 정렬 */
+    text-align: right;
 }
 
-.btn-primary {
-    padding: 12px 28px;
-    background-color: #007bff; /* 파란색 계열로 변경 */
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.05em;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.btn-primary:hover {
-    background-color: #0056b3;
-}
-
-/* Modal Styles */
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
+/* --- Meeting Detail Page --- */
+.meeting-detail-container {
     width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1050;
-    animation: fadeIn 0.3s ease;
-}
-
-.modal-content {
-    background-color: #fff;
+    max-width: 800px;
+    margin: 0 auto;
     padding: 30px;
+    background-color: #fff;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    width: 90%;
-    max-width: 500px;
-    position: relative;
-    animation: slideInUp 0.4s ease-out;
-    color: #333;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
-.modal-close-btn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: none;
-    border: none;
-    font-size: 24px;
-    color: #aaa;
-    cursor: pointer;
-    transition: color 0.2s ease;
-}
-
-.modal-close-btn:hover {
-    color: #333;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideInUp {
-    from { transform: translateY(50px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-/* Details Modal Specific Styles */
-.modal-header {
+.detail-header {
     text-align: center;
     margin-bottom: 20px;
 }
 
-#modal-details-status {
+.card-status {
     display: inline-block;
     padding: 4px 10px;
     border-radius: 12px;
@@ -466,37 +414,37 @@ body {
     margin-bottom: 10px;
 }
 
-#modal-details-status.recruiting {
+.card-status.recruiting {
     background-color: #e8f5e9;
     color: #2e7d32;
 }
 
-#modal-details-status.completed {
+.card-status.completed {
     background-color: #f3f4f6;
     color: #4b5563;
 }
 
-#modal-details-title {
+.detail-header h2 {
     font-size: 24px;
     font-weight: 600;
     margin: 0;
 }
 
-.modal-image-container {
+.detail-image-container {
     width: 100%;
-    height: 250px;
+    height: 350px;
     overflow: hidden;
     border-radius: 8px;
     margin-bottom: 20px;
 }
 
-#modal-details-img {
+.detail-image-container img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.modal-details-grid {
+.detail-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 15px;
@@ -506,11 +454,11 @@ body {
     border-radius: 8px;
 }
 
-.modal-details-grid .detail-item {
+.detail-grid .detail-item {
     font-size: 15px;
 }
 
-.modal-details-grid .detail-item strong {
+.detail-grid .detail-item strong {
     display: block;
     color: #888;
     font-weight: 500;
@@ -518,7 +466,7 @@ body {
     font-size: 13px;
 }
 
-#modal-details-description {
+.detail-description {
     line-height: 1.6;
     color: #333;
     margin-bottom: 20px;
@@ -536,27 +484,24 @@ body {
     margin-bottom: 10px;
 }
 
-#modal-participants-list {
+#participants-list {
     list-style: none;
     padding: 0;
 }
 
-#modal-participants-list li {
+#participants-list li {
     padding: 5px 0;
 }
 
-#modal-details-footer .btn-cancel {
-    background-color: #f44336;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+.detail-footer {
+    margin-top: 30px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
-.btn-danger {
+.btn-primary, .btn-danger, .btn-cancel, .btn-secondary {
     padding: 12px 28px;
-    background-color: #f44336; /* 빨간색 계열 */
     color: #ffffff;
     border: none;
     border-radius: 8px;
@@ -564,8 +509,14 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    text-decoration: none;
 }
 
-.btn-danger:hover {
-    background-color: #d32f2f;
-}
+.btn-primary { background-color: #007bff; }
+.btn-primary:hover { background-color: #0056b3; }
+.btn-danger { background-color: #f44336; }
+.btn-danger:hover { background-color: #d32f2f; }
+.btn-cancel { background-color: #6c757d; }
+.btn-cancel:hover { background-color: #5a6268; }
+.btn-secondary { background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }
+.btn-secondary:hover { background-color: #e2e6ea; }

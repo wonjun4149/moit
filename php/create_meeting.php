@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $organizer_id = $_SESSION['user_id'];
     $category = $_POST['category'];
     $max_members = (int)$_POST['max_members'];
-    $image_path = null;
+    $image_path = 'assets/default_image.png'; // 기본 이미지 경로
 
     // 파일 업로드 처리
     if (isset($_FILES['meeting_image']) && $_FILES['meeting_image']['error'] == UPLOAD_ERR_OK) {
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             curl_exec($ch);
             curl_close($ch);
 
-            redirect('meeting.php');
+            redirect('meeting_detail.php?id=' . $new_meeting_id);
         } else {
             die("데이터베이스 실행 오류");
         }
