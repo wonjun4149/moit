@@ -62,8 +62,18 @@ try {
 $site_title = "MOIT - " . htmlspecialchars($meeting['title']);
 $current_members = $meeting['current_members_count'] + 1; // 개설자 포함
 $is_full = $current_members >= $meeting['max_members'];
-$status_text = $is_full ? '모집완료' : '모집중';
-$status_class = $is_full ? 'completed' : 'recruiting';
+$is_past = strtotime($meeting['meeting_date']) < strtotime(date('Y-m-d'));
+
+if ($is_past) {
+    $status_text = '기간만료';
+    $status_class = 'expired';
+} elseif ($is_full) {
+    $status_text = '모집완료';
+    $status_class = 'completed';
+} else {
+    $status_text = '모집중';
+    $status_class = 'recruiting';
+}
 
 ?>
 <!DOCTYPE html>
@@ -127,23 +137,25 @@ $status_class = $is_full ? 'completed' : 'recruiting';
                 </div>
             </div>
             <div class="detail-footer">
-                <?php if ($current_user_id == $meeting['organizer_id']): ?>
-                    <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까? 복구할 수 없습니다.');">
-                        <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
-                        <button type="submit" class="btn-danger">모임 삭제하기</button>
-                    </form>
-                <?php elseif ($meeting['is_joined']): ?>
-                    <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
-                        <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
-                        <button type="submit" class="btn-cancel">신청 취소</button>
-                    </form>
-                <?php else: ?>
-                    <form action="join_meeting.php" method="POST">
-                        <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
-                        <button type="submit" class="btn-primary" <?php if ($is_full) echo 'disabled'; ?>>
-                            <?php echo $is_full ? '모집완료' : '신청하기'; ?>
-                        </button>
-                    </form>
+                <?php if (!$is_past): ?>
+                    <?php if ($current_user_id == $meeting['organizer_id']): ?>
+                        <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까? 복구할 수 없습니다.');">
+                            <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
+                            <button type="submit" class="btn-danger">모임 삭제하기</button>
+                        </form>
+                    <?php elseif ($meeting['is_joined']): ?>
+                        <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
+                            <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
+                            <button type="submit" class="btn-cancel">신청 취소</button>
+                        </form>
+                    <?php else: ?>
+                        <form action="join_meeting.php" method="POST">
+                            <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
+                            <button type="submit" class="btn-primary" <?php if ($is_full) echo 'disabled'; ?>>
+                                <?php echo $is_full ? '모집완료' : '신청하기'; ?>
+                            </button>
+                        </form>
+                    <?php endif; ?>
                 <?php endif; ?>
                  <a href="meeting.php" class="btn-secondary">목록으로</a>
             </div>

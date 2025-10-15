@@ -31,6 +31,7 @@ try {
             END) AS is_joined
         FROM meetings m
         JOIN users u ON m.organizer_id = u.id
+        WHERE m.meeting_date >= CURDATE()
         ORDER BY m.created_at DESC
     ";
     
