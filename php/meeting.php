@@ -76,8 +76,8 @@ try {
                 </div>
 
                 <div class="sorting-options">
-                    <a href="#" class="sort-link active">최신순</a>
-                    <a href="#" class="sort-link">마감 임박순</a>
+                    <a href="#" class="sort-link active" data-sort="latest">최신순</a>
+                    <a href="#" class="sort-link" data-sort="deadline">마감 임박순</a>
                 </div>
 
 
@@ -146,58 +146,128 @@ try {
 
     <script src="/js/navbar.js"></script>
     <script>
-        // --- 검색 및 필터 기능 ---
-        const searchInput = document.getElementById('search-input');
-        const searchButton = document.getElementById('search-button');
-        const categoryFilterContainer = document.querySelector('.category-filters');
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.getElementById('search-button');
+            const categoryFilterContainer = document.querySelector('.category-filters');
+            const sortingOptionsContainer = document.querySelector('.sorting-options');
+            const meetingCardsContainer = document.getElementById('meeting-cards-container');
 
-        function applyFilters() {
-            const searchTerm = searchInput.value.toLowerCase();
-            const activeCategoryBtn = categoryFilterContainer.querySelector('.filter-btn.active');
-            const selectedCategory = activeCategoryBtn ? activeCategoryBtn.dataset.category : '전체';
+            function applyFilters() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const activeCategoryBtn = categoryFilterContainer.querySelector('.filter-btn.active');
+                const selectedCategory = activeCategoryBtn ? activeCategoryBtn.dataset.category : '전체';
 
-            document.querySelectorAll('.meeting-card-link').forEach(link => {
-                const card = link.querySelector('.meeting-card');
-                const title = card.querySelector('.card-title').textContent.toLowerCase();
-                const cardCategory = card.dataset.category;
+                document.querySelectorAll('.meeting-card-link').forEach(link => {
+                    const card = link.querySelector('.meeting-card');
+                    const title = card.querySelector('.card-title').textContent.toLowerCase();
+                    const cardCategory = card.dataset.category;
 
-                const searchMatch = title.includes(searchTerm) || cardCategory.toLowerCase().includes(searchTerm);
-                const categoryMatch = (selectedCategory === '전체') || (cardCategory === selectedCategory);
+                    const searchMatch = title.includes(searchTerm) || cardCategory.toLowerCase().includes(searchTerm);
+                    const categoryMatch = (selectedCategory === '전체') || (cardCategory === selectedCategory);
 
-                if (searchMatch && categoryMatch) {
-                    link.style.display = 'block';
-                } else {
-                    link.style.display = 'none';
-                }
-            });
-        }
-
-        // 카테고리 버튼 클릭 이벤트
-        categoryFilterContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('filter-btn')) {
-                const currentActive = categoryFilterContainer.querySelector('.filter-btn.active');
-                if (currentActive) {
-                    currentActive.classList.remove('active');
-                }
-                e.target.classList.add('active');
-                applyFilters();
+                    if (searchMatch && categoryMatch) {
+                        link.style.display = 'block';
+                    } else {
+                        link.style.display = 'none';
+                    }
+                });
             }
-        });
 
-        // "더보기" 버튼 기능
-        const showMoreBtn = document.getElementById('show-more-btn');
-        if (showMoreBtn) {
-            showMoreBtn.addEventListener('click', () => {
-                const hiddenCategory = document.querySelector('[data-category="봉사 및 참여"]');
-                if (hiddenCategory) {
-                    hiddenCategory.style.display = 'inline-block';
+            function renderMeetingCards(meetings) {
+                meetingCardsContainer.innerHTML = ''; // 기존 카드 삭제
+                if (meetings.length === 0) {
+                    meetingCardsContainer.innerHTML = `
+                        <div id="empty-meetings-message" class="empty-message">
+                            <p>😲 현재 생성된 모임이 없습니다.</p>
+                            <span>오른쪽 '새 모임 만들기' 버튼으로 첫 모임을 만들어보세요!</span>
+                        </div>`;
+                    return;
                 }
-                showMoreBtn.style.display = 'none';
-            });
-        }
 
-        searchButton.addEventListener('click', applyFilters);
-        searchInput.addEventListener('keyup', applyFilters); // 실시간 검색
+                meetings.forEach(meeting => {
+                    const description_full = meeting.description;
+                    let description_short = description_full;
+                    if (description_full.length > 50) {
+                        description_short = description_full.substring(0, 50) + '...';
+                    }
+                    const current_members = parseInt(meeting.current_members_count) + 1;
+                    const isRecruiting = current_members < meeting.max_members;
+                    const status_text = isRecruiting ? '모집중' : '모집완료';
+                    const status_class = isRecruiting ? 'recruiting' : 'completed';
+                    
+                    // 날짜 포맷팅
+                    const date = new Date(meeting.meeting_date);
+                    const formatted_date = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
+
+                    const cardHtml = `
+                        <a href="meeting_detail.php?id=${meeting.id}" class="meeting-card-link">
+                            <div class="meeting-card" data-category="${meeting.category}">
+                                <div class="card-image">
+                                    <img src="../${meeting.image_path || 'assets/default_image.png'}" alt="${meeting.title}">
+                                </div>
+                                <div class="card-content">
+                                    <h3 class="card-title">${meeting.title}</h3>
+                                    <p class="card-description-short">${description_short}</p>
+                                    <div class="card-details">
+                                        <span class="detail-item">${meeting.location}</span>
+                                        <span class="detail-item">${formatted_date}</span>
+                                        <span class="detail-item member-count">${current_members} / ${meeting.max_members}명</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>`;
+                    meetingCardsContainer.innerHTML += cardHtml;
+                });
+            }
+
+            sortingOptionsContainer.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (e.target.classList.contains('sort-link')) {
+                    const sortType = e.target.dataset.sort;
+
+                    // 모든 정렬 링크에서 'active' 클래스 제거
+                    sortingOptionsContainer.querySelectorAll('.sort-link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    // 클릭된 링크에 'active' 클래스 추가
+                    e.target.classList.add('active');
+
+                    fetch(`get_meetings.php?sort=${sortType}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            renderMeetingCards(data);
+                            applyFilters(); // 정렬 후 필터 다시 적용
+                        })
+                        .catch(error => console.error('Error fetching meetings:', error));
+                }
+            });
+
+            categoryFilterContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('filter-btn')) {
+                    const currentActive = categoryFilterContainer.querySelector('.filter-btn.active');
+                    if (currentActive) {
+                        currentActive.classList.remove('active');
+                    }
+                    e.target.classList.add('active');
+                    applyFilters();
+                }
+            });
+
+            const showMoreBtn = document.getElementById('show-more-btn');
+            if (showMoreBtn) {
+                showMoreBtn.addEventListener('click', () => {
+                    const hiddenCategory = document.querySelector('[data-category="봉사 및 참여"]');
+                    if (hiddenCategory) {
+                        hiddenCategory.style.display = 'inline-block';
+                    }
+                    showMoreBtn.style.display = 'none';
+                });
+            }
+
+            searchButton.addEventListener('click', applyFilters);
+            searchInput.addEventListener('keyup', applyFilters);
+        });
     </script>
 </body>
 </html>
