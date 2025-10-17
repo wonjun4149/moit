@@ -237,12 +237,12 @@ body {
 }
 
 .search-input-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
     background-color: #fff;
     border: 1px solid #ddd;
-    border-radius: 25px; /* Make it a pill shape */
-    padding: 5px;
+    border-radius: 8px; /* Rounded rectangle */
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -256,18 +256,23 @@ body {
     border: none;
     outline: none;
     flex-grow: 1;
-    padding: 10px;
+    padding: 15px;
     font-size: 1em;
     background-color: transparent;
+    padding-right: 60px; /* Make space for the button */
 }
 
 #search-button {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
     background-color: #007bff;
     color: white;
     border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    border-radius: 6px; /* Rounded rectangle button */
     cursor: pointer;
     font-size: 1.2em;
     display: flex;
