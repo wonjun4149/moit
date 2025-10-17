@@ -110,8 +110,9 @@ try {
                                     <div class="meeting-status">
                                         <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
                                         <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
-                                        <button type="button" class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
-                                        <button type="button" class="btn-delete" data-meeting-id="<?php echo $meeting['id']; ?>">삭제</button>
+                                        <button class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
+                                        <button class="btn-delete" data-meeting-id="<?php echo $meeting['id']; ?>">삭제</button>
+                                        <a href="edit_meeting.php?id=<?php echo $meeting['id']; ?>" class="btn-edit">수정</a>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
@@ -145,9 +146,9 @@ try {
                                     <div class="meeting-status">
                                         <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
                                         <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
-                                        <button type="button" class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
+                                        <button class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
                                         <?php if (!$is_past): ?>
-                                            <button type="button" class="btn-cancel" data-meeting-id="<?php echo $meeting['id']; ?>">신청 취소</button>
+                                            <button class="btn-cancel" data-meeting-id="<?php echo $meeting['id']; ?>">신청 취소</button>
                                         <?php endif; ?>
                                     </div>
                                 </li>
@@ -277,7 +278,6 @@ try {
                                 console.error('Error fetching participants:', error);
                             });
                     } else if (e.target.classList.contains('btn-delete')) {
-                        e.preventDefault();
                         const meetingId = e.target.dataset.meetingId;
                         if (confirm('정말로 이 모임을 삭제하시겠습니까? 되돌릴 수 없습니다.')) {
                             fetch('delete_meeting.php', {

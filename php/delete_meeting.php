@@ -26,8 +26,8 @@ if (!$meeting_id) {
 try {
     $pdo = getDBConnection();
 
-    // 1. 모임 개설자가 현재 사용자인지 확인
-    $stmt = $pdo->prepare("SELECT organizer_id FROM meetings WHERE id = ?");
+    // 1. 모임 정보(개설자, 이미지 경로) 확인
+    $stmt = $pdo->prepare("SELECT organizer_id, image_path FROM meetings WHERE id = ?");
     $stmt->execute([$meeting_id]);
     $meeting = $stmt->fetch();
 
@@ -35,6 +35,9 @@ try {
         echo json_encode(['success' => false, 'message' => '모임을 삭제할 권한이 없습니다.']);
         exit;
     }
+
+    // 삭제할 이미지 파일 경로 저장
+    $image_to_delete = $meeting['image_path'];
 
     // 트랜잭션 시작
     $pdo->beginTransaction();
@@ -49,6 +52,13 @@ try {
 
     // 트랜잭션 커밋
     $pdo->commit();
+
+    // --- DB 삭제 성공 후, 서버에 저장된 이미지 파일 삭제 ---
+    if ($image_to_delete && $image_to_delete !== 'assets/default_image.png' && file_exists('../' . $image_to_delete)) {
+        // 기본 이미지가 아니고, 파일이 실제로 존재할 경우에만 삭제
+        unlink('../' . $image_to_delete);
+    }
+    // ----------------------------------------------------
 
     // --- 4. Pinecone DB에서도 해당 벡터 삭제 요청 ---
     // AI 서버의 삭제 엔드포인트 호출
