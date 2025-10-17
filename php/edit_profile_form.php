@@ -37,9 +37,13 @@ try {
             <?php if ($user): ?>
             <form action="update_profile.php" method="post" enctype="multipart/form-data" class="auth-form">
                 <div class="profile-pic-edit-area">
-                    <div class="profile-pic-preview" style="background-image: url('../<?php echo htmlspecialchars($user['profile_image_path'] ?? 'assets/default_profile.png'); ?>');"></div>
-                    <label for="profile_image" class="btn-upload">사진 변경</label>
+                    <label for="profile_image" class="profile-pic-preview-label">
+                        <div class="profile-pic-preview" style="background-image: url('../<?php echo htmlspecialchars($user['profile_image_path'] ?? 'assets/default_profile.png'); ?>');">
+                            <div class="overlay"><span>사진 변경</span></div>
+                        </div>
+                    </label>
                     <input type="file" id="profile_image" name="profile_image" accept="image/*" style="display: none;">
+                    <span id="file-name-display"></span>
                 </div>
 
                 <div class="form-group">
@@ -58,8 +62,10 @@ try {
     <script>
         document.getElementById('profile_image').addEventListener('change', function(event) {
             const preview = document.querySelector('.profile-pic-preview');
+            const fileNameDisplay = document.getElementById('file-name-display');
             const file = event.target.files[0];
             if (file) {
+                fileNameDisplay.textContent = file.name;
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     preview.style.backgroundImage = `url('${e.target.result}')`;
