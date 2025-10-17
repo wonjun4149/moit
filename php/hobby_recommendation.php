@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
 
         // 3. AI 에이전트에 보낼 데이터 구조 생성
         $request_payload = [
-ㅅ            'user_input' => [
+            'user_input' => [
                 'survey' => $survey_data, 
                 'image_paths' => $image_paths
             ]
