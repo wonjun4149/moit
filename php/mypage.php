@@ -113,8 +113,8 @@ try {
                                         <button type="button" class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
                                         <?php if (!$is_past): ?>
                                             <a href="edit_meeting_form.php?id=<?php echo $meeting['id']; ?>" class="btn-edit">수정</a>
+                                            <button type="button" class="btn-delete" data-meeting-id="<?php echo $meeting['id']; ?>">삭제</button>
                                         <?php endif; ?>
-                                        <button type="button" class="btn-delete" data-meeting-id="<?php echo $meeting['id']; ?>">삭제</button>
                                     </div>
                                 </li>
                             <?php endforeach; ?>

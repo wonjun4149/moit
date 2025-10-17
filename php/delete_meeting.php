@@ -26,13 +26,23 @@ if (!$meeting_id) {
 try {
     $pdo = getDBConnection();
 
-    // 1. 모임 정보(개설자, 이미지 경로) 확인
-    $stmt = $pdo->prepare("SELECT organizer_id, image_path FROM meetings WHERE id = ?");
+    // 1. 모임 정보(개설자, 이미지 경로, 모임 날짜) 확인
+    $stmt = $pdo->prepare("SELECT organizer_id, image_path, meeting_date, meeting_time FROM meetings WHERE id = ?");
     $stmt->execute([$meeting_id]);
     $meeting = $stmt->fetch();
 
     if (!$meeting || $meeting['organizer_id'] != $user_id) {
         echo json_encode(['success' => false, 'message' => '모임을 삭제할 권한이 없습니다.']);
+        exit;
+    }
+
+    // 2. 모임 날짜 확인 (이미 끝난 모임은 삭제 불가)
+    $meeting_datetime_str = $meeting['meeting_date'] . ' ' . $meeting['meeting_time'];
+    $meeting_datetime = new DateTime($meeting_datetime_str);
+    $now = new DateTime();
+
+    if ($meeting_datetime < $now) {
+        echo json_encode(['success' => false, 'message' => '이미 종료된 모임은 삭제할 수 없습니다.']);
         exit;
     }
 
