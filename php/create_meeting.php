@@ -136,9 +136,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($api_data));
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-            curl_exec($ch);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10); // 타임아웃을 넉넉하게 10초로 설정
+            
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
+
+            // [수정] AI 서버 응답 확인 로직 추가
+            if ($http_code !== 200) {
+                // 실패 시 에러 로그를 남기고, 사용자에게는 영향을 주지 않도록 처리
+                error_log("Pinecone update failed for meeting ID {$new_meeting_id}. AI server responded with code: {$http_code}. Response: {$response}");
+            }
 
             redirect('meeting_detail.php?id=' . $new_meeting_id);
         } else {
