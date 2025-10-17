@@ -50,6 +50,25 @@ try {
     // 트랜잭션 커밋
     $pdo->commit();
 
+    // --- 4. Pinecone DB에서도 해당 벡터 삭제 요청 ---
+    // AI 서버의 삭제 엔드포인트 호출
+    $ch = curl_init("http://127.0.0.1:8000/meetings/delete/" . urlencode($meeting_id));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    // AI 서버 응답 확인
+    if ($http_code !== 200) {
+        // 실패하더라도 사용자에게는 성공으로 보이게 하되, 서버 로그에는 기록을 남김
+        error_log("Pinecone delete failed for meeting ID {$meeting_id}. AI server responded with code: {$http_code}. Response: {$response}");
+    }
+    // ---------------------------------------------
+
     echo json_encode(['success' => true, 'message' => '모임이 성공적으로 삭제되었습니다.']);
 
 } catch (PDOException $e) {
