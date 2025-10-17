@@ -241,10 +241,10 @@ body {
     align-items: center;
     background-color: #fff;
     border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 25px; /* Make it a pill shape */
+    padding: 5px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    overflow: hidden;
 }
 
 .search-input-wrapper:focus-within {
@@ -256,7 +256,7 @@ body {
     border: none;
     outline: none;
     flex-grow: 1;
-    padding: 15px;
+    padding: 10px;
     font-size: 1em;
     background-color: transparent;
 }
@@ -265,11 +265,19 @@ body {
     background-color: #007bff;
     color: white;
     border: none;
-    padding: 15px 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 1.2em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     transition: background-color 0.2s ease;
-    align-self: stretch;
+}
+
+#search-button:hover {
+    background-color: #0056b3;
 }
 
 #search-button:hover {
