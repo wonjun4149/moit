@@ -277,6 +277,7 @@ try {
                                 console.error('Error fetching participants:', error);
                             });
                     } else if (e.target.classList.contains('btn-delete')) {
+                        e.preventDefault();
                         const meetingId = e.target.dataset.meetingId;
                         if (confirm('정말로 이 모임을 삭제하시겠습니까? 되돌릴 수 없습니다.')) {
                             fetch('delete_meeting.php', {
