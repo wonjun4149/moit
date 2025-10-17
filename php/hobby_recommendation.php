@@ -506,17 +506,16 @@ debug_output("최종 상태", [
                 }
             });
 
-            // [수정] 폼 제출 이벤트를 submit 버튼이 아닌 form 자체에 연결합니다.
-            submitBtn.addEventListener('click', function(event) {
-                 // 마지막 단계 유효성 검사
-                 if (validateCurrentStep()) {
-                    // 버튼 텍스트를 '분석 중...'으로 변경하고 폼을 제출합니다.
-                    submitBtn.textContent = '분석 중...';
-                    submitBtn.disabled = true;
-                    surveyForm.submit();
-                 } else {
-                    alert('현재 단계의 질문에 답변해주세요.');
-                 }
+            // [수정] 폼 제출(submit) 이벤트가 발생했을 때의 동작을 정의합니다.
+            surveyForm.addEventListener('submit', function(event) {
+                // 마지막 단계 유효성 검사에 실패하면 폼 제출을 중단합니다.
+                if (currentStep === totalSteps && !validateCurrentStep()) {
+                    event.preventDefault(); 
+                    alert('마지막 질문에 답변하거나 사진을 추가해주세요.');
+                    return;
+                }
+                submitBtn.textContent = '분석 중...';
+                submitBtn.disabled = true;
             });
 
             function updateStepDisplay() {
