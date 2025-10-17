@@ -304,8 +304,7 @@ body {
 }
 
 .deadline-list li {
-    margin-bottom: 10px;
-    font-size: 0.95em;
+    margin-bottom: 5px;
 }
 
 .deadline-list li:last-child {
@@ -314,12 +313,30 @@ body {
 
 .deadline-list a {
     text-decoration: none;
-    color: #333;
-    transition: color 0.2s ease;
+    color: inherit;
+    display: block;
+    padding: 10px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
 }
 
 .deadline-list a:hover {
-    color: #007bff;
+    background-color: #f0f0f0;
+}
+
+.deadline-title {
+    font-size: 1.05em;
+    font-weight: 600;
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.deadline-details {
+    font-size: 0.9em;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
 }
 
 /* --- Form Container (새 모임 만들기) --- */

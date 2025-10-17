@@ -285,7 +285,29 @@ try {
                     const item = document.createElement('li');
                     const link = document.createElement('a');
                     link.href = `meeting_detail.php?id=${meeting.id}`;
-                    link.textContent = meeting.title;
+
+                    const title = document.createElement('span');
+                    title.className = 'deadline-title';
+                    title.textContent = meeting.title;
+
+                    const details = document.createElement('div');
+                    details.className = 'deadline-details';
+
+                    const location = document.createElement('span');
+                    location.textContent = meeting.location;
+
+                    const timeRemaining = document.createElement('span');
+                    const meetingTime = new Date(`${meeting.meeting_date} ${meeting.meeting_time}`);
+                    const now = new Date();
+                    const diffHours = Math.round((meetingTime - now) / (1000 * 60 * 60));
+                    timeRemaining.textContent = `${diffHours}시간 후`;
+
+                    details.appendChild(location);
+                    details.appendChild(timeRemaining);
+
+                    link.appendChild(title);
+                    link.appendChild(details);
+
                     item.appendChild(link);
                     list.appendChild(item);
                 });
