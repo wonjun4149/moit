@@ -81,31 +81,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
         debug_output("정리된 설문 데이터", $survey_data);
 
         // 2. 이미지 파일 처리
-        $image_paths = [];
+        $image_urls = []; // [수정] 파일 경로 대신 웹 URL을 저장할 배열
         if (isset($_FILES['hobby_photos'])) {
             $upload_dir = '../uploads/hobby_photos/';
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0775, true);
             }
 
+            // [수정] 웹 서버의 기본 URL을 설정합니다. 실제 환경에 맞게 변경해야 할 수 있습니다.
+            $base_url = "http://" . $_SERVER['HTTP_HOST'];
+
             foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
                 if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
                     $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
                     $target_file = $upload_dir . $file_name;
                     if (move_uploaded_file($tmp_name, $target_file)) {
-                        // AI 서버가 접근할 수 있는 절대 경로로 변환
-                        $image_paths[] = realpath($target_file);
+                        // [수정] AI 서버가 웹을 통해 접근할 수 있는 전체 URL을 생성합니다.
+                        // 'moit'는 프로젝트의 웹 루트 디렉토리 구조에 따라 달라질 수 있습니다.
+                        $image_urls[] = $base_url . '/uploads/hobby_photos/' . $file_name;
                     }
                 }
             }
         }
-        debug_output("업로드된 이미지 경로", $image_paths);
+        debug_output("생성된 이미지 URL", $image_urls);
 
         // 3. AI 에이전트에 보낼 데이터 구조 생성
         $request_payload = [
             'user_input' => [
                 'survey' => $survey_data, 
-                'image_paths' => $image_paths
+                'image_urls' => $image_urls // [수정] 키 이름을 image_urls로 변경
             ]
         ];
         debug_output("AI 서버 요청 데이터", $request_payload);
