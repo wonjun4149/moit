@@ -103,7 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
 
         // 3. AI 에이전트에 보낼 데이터 구조 생성
         $request_payload = [
-            'user_input' => [ 'survey' => $survey_data, 'image_paths' => $image_paths ]
+            'user_input' => [
+                'survey' => $survey_data, 
+                'image_paths' => $image_paths
+            ]
         ];
         debug_output("AI 서버 요청 데이터", $request_payload);
 
@@ -340,7 +343,7 @@ debug_output("최종 상태", [
                                         <ul>
                                             <li><strong>최근 한 달 동안</strong> 찍은 사진 중 마음에 드는 것을 골라주세요.</li>
                                             <li>과거의 사진 중 <strong>돌아가고 싶은 순간</strong>이나 <strong>간직하고 싶은 추억</strong>이 담긴 사진도 좋습니다.</li>
-                                            <li>인물, 사물, 풍경, 음식 등 <strong>다양한 사진</strong>을 올릴수록 분석 정확도가 높아집니다. (최대 10장)</li>
+                                            <li>인물, 사물, 풍경, 음식 등 <strong>다양한 사진</strong>을 올릴수록 분석 정확도가 높아집니다.</li>
                                         </ul>
                                     </div>
                                     <input type="file" name="hobby_photos[]" id="hobby_photos" multiple accept="image/*" style="margin-top: 15px;">
@@ -421,11 +424,6 @@ debug_output("최종 상태", [
             if(photoInput) {
                 photoInput.addEventListener('change', function() {
                     photoPreview.innerHTML = ''; // 기존 미리보기 초기화
-                    if (this.files.length > 10) {
-                        alert('사진은 최대 10장까지 업로드할 수 있습니다.');
-                        this.value = ''; // 파일 선택 취소
-                        return;
-                    }
                     Array.from(this.files).forEach(file => {
                         const reader = new FileReader();
                         reader.onload = function(e) {
