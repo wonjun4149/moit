@@ -35,24 +35,38 @@ try {
         <div class="form-box">
             <h2>프로필 수정</h2>
             <?php if ($user): ?>
-            <form action="update_profile.php" method="post" enctype="multipart/form-data">
-                <div class="input-group">
+            <form action="update_profile.php" method="post" enctype="multipart/form-data" class="auth-form">
+                <div class="profile-pic-edit-area">
+                    <div class="profile-pic-preview" style="background-image: url('../<?php echo htmlspecialchars($user['profile_image_path'] ?? 'assets/default_profile.png'); ?>');"></div>
+                    <label for="profile_image" class="btn-upload">사진 변경</label>
+                    <input type="file" id="profile_image" name="profile_image" accept="image/*" style="display: none;">
+                </div>
+
+                <div class="form-group">
                     <label for="nickname">닉네임</label>
                     <input type="text" id="nickname" name="nickname" value="<?php echo htmlspecialchars($user['nickname']); ?>" required>
                 </div>
-                <div class="input-group">
-                    <label for="profile_image">프로필 사진</label>
-                    <input type="file" id="profile_image" name="profile_image" accept="image/*">
-                    <?php if ($user['profile_image_path']): ?>
-                        <img src="../<?php echo htmlspecialchars($user['profile_image_path']); ?>" alt="Current profile image" style="max-width: 100px; margin-top: 10px;">
-                    <?php endif; ?>
-                </div>
-                <button type="submit" class="btn-submit">수정하기</button>
+
+                <button type="submit" class="submit-btn">수정하기</button>
             </form>
             <?php else: ?>
                 <p>사용자 정보를 불러올 수 없습니다.</p>
             <?php endif; ?>
         </div>
     </main>
+
+    <script>
+        document.getElementById('profile_image').addEventListener('change', function(event) {
+            const preview = document.querySelector('.profile-pic-preview');
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.style.backgroundImage = `url('${e.target.result}')`;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
 </body>
 </html>

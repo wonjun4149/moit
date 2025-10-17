@@ -11,8 +11,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto
 .profile-info { flex-grow: 1; }
 .profile-info h2 { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
 .profile-info p { font-size: 16px; color: #666; }
-.edit-profile-btn { background: #f1f3f5; color: #495057; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 500; cursor: pointer; transition: background 0.2s ease; }
-.edit-profile-btn:hover { background: #dee2e6; }
+.edit-profile-btn {
+    background: linear-gradient(135deg, #5A78E6, #3A58B9);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.edit-profile-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
 
 /* 탭 네비게이션 */
 .tab-nav { display: flex; gap: 10px; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; }
