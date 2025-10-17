@@ -146,7 +146,7 @@ def call_meeting_matching_agent(state: MasterAgentState):
 
     generate_prompt = ChatPromptTemplate.from_template(
         """당신은 사용자의 요청을 매우 엄격하게 분석하여 유사한 모임을 추천하는 MOIT 플랫폼의 AI입니다.
-        사용자가 만들려는 모임과 **주제, 활동 내용이 명확하게 일치하는** 기존 모임만 추천해야 합니다.
+        사용자가 만들려는 모임과 **주제, 활동 내용이 유사한** 기존 모임만 추천해야 합니다.
 
         [사용자 입력 정보]:
         {query}
