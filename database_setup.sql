@@ -128,6 +128,18 @@ CREATE TABLE IF NOT EXISTS meeting_participants (
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='모임 참여자 테이블';
 
+-- AI 기반 취미 추천 결과 저장 테이블
+CREATE TABLE IF NOT EXISTS ai_hobby_recommendations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,
+    recommendation_text TEXT NOT NULL COMMENT 'AI가 생성한 추천 메시지 원문',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 취미 추천 결과 저장 테이블';
+
+
 -- 샘플 취미 데이터 삽입
 INSERT IGNORE INTO hobbies (name, category, description, difficulty_level, activity_type, group_size, cost_level, physical_level) VALUES 
 ('축구', '운동', '팀워크와 체력을 기를 수 있는 대표적인 스포츠', '초급', '실외', '대그룹', '저비용', '높음'),

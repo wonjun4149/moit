@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
 
         // 3. AI 에이전트에 보낼 데이터 구조 생성
         $request_payload = [
-            'user_input' => [
+ㅅ            'user_input' => [
                 'survey' => $survey_data, 
                 'image_paths' => $image_paths
             ]
@@ -139,6 +139,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
         if (isset($response_data['final_answer']) && !empty($response_data['final_answer'])) {
             // AI 응답이 추천 메시지 전체이므로 그대로 사용
             $recommendations = $response_data['final_answer'];
+
+            // AI 추천 결과를 데이터베이스에 저장
+            try {
+                debug_output("AI 추천 결과 DB 저장 시도");
+                $stmt = $pdo->prepare("
+                    INSERT INTO ai_hobby_recommendations (user_id, recommendation_text) 
+                    VALUES (?, ?)
+                ");
+                $stmt->execute([$_SESSION['user_id'], $recommendations]);
+                debug_output("AI 추천 결과 DB 저장 성공");
+            } catch (PDOException $e) {
+                debug_output("AI 추천 결과 DB 저장 실패", $e->getMessage());
+            }
         }
 
         if (empty($recommendations)) {

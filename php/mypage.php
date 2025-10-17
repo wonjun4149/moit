@@ -12,6 +12,7 @@ $site_title = "MOIT - 마이페이지";
 // DB에서 사용자의 모임 정보를 가져옵니다.
 $created_meetings = [];
 $joined_meetings = [];
+$ai_recommendations = []; // AI 추천 기록을 담을 배열
 $user_id = $_SESSION['user_id'];
 
 try {
@@ -49,6 +50,16 @@ try {
     $stmt_joined->execute([$user_id]);
     $joined_meetings = $stmt_joined->fetchAll();
 
+    // 3. 내가 받은 AI 취미 추천 기록 조회
+    $stmt_ai_reco = $pdo->prepare("
+        SELECT recommendation_text, created_at
+        FROM ai_hobby_recommendations
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    ");
+    $stmt_ai_reco->execute([$user_id]);
+    $ai_recommendations = $stmt_ai_reco->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
     // 데이터베이스 오류 처리
     error_log("Mypage data fetch error: " . $e->getMessage());
@@ -82,6 +93,7 @@ try {
             <div class="tab-nav">
                 <button class="tab-btn active" data-target="created-meetings">내가 만든 모임</button>
                 <button class="tab-btn" data-target="joined-meetings">내가 참여한 모임</button>
+                <button class="tab-btn" data-target="ai-recommendations">AI 취미 추천 기록</button>
             </div>
 
             <div class="tab-content">
@@ -158,6 +170,23 @@ try {
                         </ul>
                     <?php endif; ?>
                 </div>
+
+                <div id="ai-recommendations" class="tab-pane">
+                    <?php if (empty($ai_recommendations)): ?>
+                        <p class="empty-message">아직 AI에게 취미를 추천받은 기록이 없어요.</p>
+                    <?php else: ?>
+                        <div class="ai-reco-list">
+                            <?php foreach ($ai_recommendations as $reco): ?>
+                                <div class="ai-reco-item">
+                                    <div class="reco-header">
+                                        <span class="reco-date"><?php echo date('Y년 m월 d일 H:i', strtotime($reco['created_at'])); ?></span>
+                                    </div>
+                                    <div class="reco-content"><?php echo nl2br(htmlspecialchars($reco['recommendation_text'])); ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </main>
@@ -203,6 +232,11 @@ try {
                 tabBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
                         const targetId = btn.getAttribute('data-target');
+
+                        // 'inactive' 클래스 관련 로직 제거 또는 수정
+                        // tabPanes.forEach(p => p.classList.remove('inactive'));
+                        // tabPanes.forEach(p => p.classList.add('inactive'));
+                        // pane.classList.remove('inactive');
     
                         tabBtns.forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
