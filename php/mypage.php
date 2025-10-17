@@ -193,52 +193,47 @@ try {
         </div>
     </div>
 
-    <script src="/js/navbar.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 탭 기능
-            const tabBtns = document.querySelectorAll('.tab-btn');
-            const tabPanes = document.querySelectorAll('.tab-pane');
-
-            tabBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const targetId = btn.getAttribute('data-target');
-
-                    tabBtns.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-
-                    tabPanes.forEach(pane => {
-                        if (pane.id === targetId) {
-                            pane.classList.add('active');
-                        } else {
-                            pane.classList.remove('active');
-                        }
+        <script src="/js/navbar.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // 탭 기능
+                const tabBtns = document.querySelectorAll('.tab-btn');
+                const tabPanes = document.querySelectorAll('.tab-pane');
+    
+                tabBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const targetId = btn.getAttribute('data-target');
+    
+                        tabBtns.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+    
+                        tabPanes.forEach(pane => {
+                            pane.classList.add(pane.id === targetId ? 'active' : 'inactive');
+                            pane.classList.remove(pane.id === targetId ? 'inactive' : 'active');
+                        });
                     });
                 });
-            });
-
-            // --- 상세보기 모달 기능 ---
-            const detailsModal = document.getElementById('details-modal');
-            const meetingLists = document.querySelectorAll('.meeting-list');
-
-            const openModal = (modal) => modal.style.display = 'flex';
-            const closeModal = (modal) => modal.style.display = 'none';
-
-            detailsModal.addEventListener('click', (e) => {
-                if (e.target.classList.contains('modal-backdrop') || e.target.classList.contains('modal-close-btn')) {
-                    closeModal(detailsModal);
-                }
-            });
-
-            meetingLists.forEach(list => {
-                list.addEventListener('click', e => {
-                    if (e.target.classList.contains('btn-details')) {
-                        const meetingData = JSON.parse(e.target.dataset.meeting);
+    
+                // --- 모달 기능 ---
+                const detailsModal = document.getElementById('details-modal');
+                const openModal = (modal) => modal.style.display = 'flex';
+                const closeModal = (modal) => modal.style.display = 'none';
+    
+                detailsModal.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal-backdrop') || e.target.classList.contains('modal-close-btn')) {
+                        closeModal(detailsModal);
+                    }
+                });
+    
+                // 상세보기 버튼 핸들러
+                document.querySelectorAll('.btn-details').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const meetingData = JSON.parse(this.dataset.meeting);
                         
                         const isRecruiting = meetingData.current_members < meetingData.max_members;
                         const status_text = isRecruiting ? '모집중' : '모집완료';
                         const status_class = isRecruiting ? 'recruiting' : 'completed';
-
+    
                         document.getElementById('modal-details-title').textContent = meetingData.title;
                         document.getElementById('modal-details-description').textContent = meetingData.description;
                         document.getElementById('modal-details-category').textContent = meetingData.category;
@@ -248,53 +243,46 @@ try {
                         document.getElementById('modal-details-members').textContent = `${meetingData.current_members} / ${meetingData.max_members}`;
                         document.getElementById('modal-details-organizer').textContent = meetingData.organizer_nickname;
                         document.getElementById('modal-details-img').src = `../${meetingData.image_path || 'assets/default_image.png'}`;
-
-                        const modalFooter = document.getElementById('modal-details-footer');
-                        modalFooter.innerHTML = ''; // 기존 버튼 삭제
-
+    
                         openModal(detailsModal);
-
-                        // 참여자 목록 가져오기
+    
                         const participantsList = document.getElementById('modal-details-participants-list');
                         participantsList.innerHTML = '<li>목록을 불러오는 중...</li>';
-
+    
                         fetch(`get_participants.php?meeting_id=${meetingData.id}`)
                             .then(response => response.json())
                             .then(data => {
                                 participantsList.innerHTML = '';
                                 if (data.error) {
                                     participantsList.innerHTML = '<li>참여자 정보를 가져오는데 실패했습니다.</li>';
-                                    console.error(data.error);
                                 } else if (data.length > 0) {
-                                    data.forEach(participant => {
-                                        const li = document.createElement('li');
-                                        li.textContent = participant;
-                                        participantsList.appendChild(li);
-                                    });
+                                    data.forEach(p => participantsList.innerHTML += `<li>${p}</li>`);
                                 } else {
                                     participantsList.innerHTML = '<li>아직 참여자가 없습니다.</li>';
                                 }
                             })
                             .catch(error => {
                                 participantsList.innerHTML = '<li>참여자 정보를 가져오는데 실패했습니다.</li>';
-                                console.error('Error fetching participants:', error);
                             });
-                    } else if (e.target.classList.contains('btn-delete')) {
-                        const meetingId = e.target.dataset.meetingId;
+                    });
+                });
+    
+                // 삭제 버튼 핸들러
+                document.querySelectorAll('.btn-delete').forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const meetingId = this.dataset.meetingId;
                         if (confirm('정말로 이 모임을 삭제하시겠습니까? 되돌릴 수 없습니다.')) {
                             fetch('delete_meeting.php', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded',
-                                },
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                                 body: `meeting_id=${meetingId}`
                             })
                             .then(response => response.json())
                             .then(data => {
                                 if (data.success) {
                                     alert('모임이 삭제되었습니다.');
-                                    // UI에서 해당 모임 항목 제거
-                                    e.target.closest('li[data-meeting-id]').remove();
+                                    this.closest('li[data-meeting-id]').remove();
                                 } else {
                                     alert('모임 삭제에 실패했습니다: ' + data.message);
                                 }
@@ -304,22 +292,25 @@ try {
                                 alert('모임 삭제 중 오류가 발생했습니다.');
                             });
                         }
-                    } else if (e.target.classList.contains('btn-cancel')) {
-                        const meetingId = e.target.dataset.meetingId;
+                    });
+                });
+    
+                // 참여 취소 버튼 핸들러
+                document.querySelectorAll('.btn-cancel').forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const meetingId = this.dataset.meetingId;
                         if (confirm('정말로 이 모임의 참여를 취소하시겠습니까?')) {
                             fetch('cancel_application.php', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded',
-                                },
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                                 body: `meeting_id=${meetingId}`
                             })
                             .then(response => response.json())
                             .then(data => {
                                 if (data.success) {
                                     alert('모임 참여가 취소되었습니다.');
-                                    // UI에서 해당 모임 항목 제거
-                                    e.target.closest('li[data-meeting-id]').remove();
+                                    this.closest('li[data-meeting-id]').remove();
                                 } else {
                                     alert('참여 취소에 실패했습니다: ' + data.message);
                                 }
@@ -329,10 +320,8 @@ try {
                                 alert('참여 취소 중 오류가 발생했습니다.');
                             });
                         }
-                    }
+                    });
                 });
             });
-        });
-    </script>
-</body>
+        </script></body>
 </html>
