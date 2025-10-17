@@ -128,10 +128,7 @@ $status_class = $is_full ? 'completed' : 'recruiting';
             </div>
             <div class="detail-footer">
                 <?php if ($current_user_id == $meeting['organizer_id']): ?>
-                    <form action="delete_meeting.php" method="POST" onsubmit="return confirm('정말로 이 모임을 삭제하시겠습니까? 복구할 수 없습니다.');">
-                        <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
-                        <button type="submit" class="btn-danger">모임 삭제하기</button>
-                    </form>
+                    <button type="button" id="delete-meeting-btn" class="btn-danger" data-meeting-id="<?php echo $meeting['id']; ?>">모임 삭제하기</button>
                 <?php elseif ($meeting['is_joined']): ?>
                     <form action="cancel_application.php" method="POST" onsubmit="return confirm('정말로 신청을 취소하시겠습니까?');">
                         <input type="hidden" name="meeting_id" value="<?php echo $meeting['id']; ?>">
@@ -151,5 +148,40 @@ $status_class = $is_full ? 'completed' : 'recruiting';
     </main>
 
     <script src="/js/navbar.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteButton = document.getElementById('delete-meeting-btn');
+
+        if (deleteButton) {
+            deleteButton.addEventListener('click', function() {
+                const meetingId = this.dataset.meetingId;
+
+                if (!confirm('정말로 이 모임을 삭제하시겠습니까? \n삭제된 데이터는 복구할 수 없습니다.')) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('meeting_id', meetingId);
+
+                fetch('delete_meeting.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+
+                    if (data.success) {
+                        location.href = 'meeting.php';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('모임 삭제 중 오류가 발생했습니다.');
+                });
+            });
+        }
+    });
+    </script>
 </body>
 </html>
