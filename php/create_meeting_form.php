@@ -96,6 +96,20 @@ $site_title = "MOIT - 새 모임 만들기";
         const createMeetingForm = document.getElementById('create-meeting-form');
         if (createMeetingForm) {
             createMeetingForm.addEventListener('submit', function(event) {
+                const dateInput = document.getElementById('create-date').value;
+                const timeInput = document.getElementById('create-time').value;
+
+                if (dateInput && timeInput) {
+                    const selectedDateTime = new Date(dateInput + 'T' + timeInput);
+                    const now = new Date();
+
+                    if (selectedDateTime < now) {
+                        event.preventDefault(); // 폼 제출 방지
+                        alert('지난 시간으로는 모임을 생성할 수 없습니다. 현재 시간 이후로 설정해주세요.');
+                        return;
+                    }
+                }
+
                 // 폼 유효성 검사를 통과하지 못하면 기본 제출 동작을 막음
                 if (!this.checkValidity()) {
                     event.preventDefault();

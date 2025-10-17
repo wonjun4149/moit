@@ -20,6 +20,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $meeting_date = $_POST['meeting_date'];
     $meeting_time = $_POST['meeting_time'];
 
+    // 서버 측 시간 유효성 검사
+    try {
+        $selected_datetime = new DateTime($meeting_date . ' ' . $meeting_time);
+        $now = new DateTime();
+
+        if ($selected_datetime < $now) {
+            // 사용자에게 오류 메시지를 보여주고 스크립트 실행을 중단합니다.
+            // 실제 프로덕션 환경에서는 오류 페이지로 리디렉션하거나 JSON 응답을 보낼 수 있습니다.
+            die('<script>alert("지난 시간으로는 모임을 생성할 수 없습니다."); window.history.back();</script>');
+        }
+    } catch (Exception $e) {
+        die('<script>alert("잘못된 날짜 또는 시간 형식입니다."); window.history.back();</script>');
+    }
+
     // --- 1. AI 에이전트를 호출하여 유사 모임 확인 ---
     // AI가 기대하는 messages 형식에 맞게 데이터 구조 변경
     $meeting_info = [
