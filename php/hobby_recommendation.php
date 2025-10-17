@@ -68,48 +68,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
         $survey_data = [];
         foreach ($_POST as $key => $value) {
             if (strpos($key, 'Q') === 0) {
-                // [수정] 키를 문자열로 변환하여 JSON 인코딩 시 배열이 아닌 객체로 유지되도록 합니다.
-                $q_num_str = (string)intval(substr($key, 1));
+                // Q10과 같은 체크박스는 배열로 들어오므로 그대로 유지
+                $q_num = intval(substr($key, 1));
                 if (is_array($value)) {
-                    $survey_data[$q_num_str] = $value;
+                    $survey_data[$q_num] = $value;
                 } else {
                     // 라디오/likert 값은 숫자 값으로 변환
-                    $survey_data[$q_num_str] = intval($value);
+                    $survey_data[$q_num] = intval($value);
                 }
             }
         }
         debug_output("정리된 설문 데이터", $survey_data);
 
         // 2. 이미지 파일 처리
-        $image_urls = [];
+        $image_paths = [];
         if (isset($_FILES['hobby_photos'])) {
             $upload_dir = '../uploads/hobby_photos/';
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0775, true);
             }
 
-            // 웹 서버의 기본 URL을 설정합니다. (예: http://localhost:8080)
-            $base_url = "http://" . $_SERVER['HTTP_HOST'];
-
             foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
                 if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
                     $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
                     $target_file = $upload_dir . $file_name;
                     if (move_uploaded_file($tmp_name, $target_file)) {
-                        // AI 서버가 웹을 통해 접근할 수 있는 전체 URL을 생성합니다.
-                        // '/moit' 부분은 웹 서버 설정에 따라 필요 없을 수 있습니다.
-                        $image_urls[] = $base_url . '/uploads/hobby_photos/' . $file_name;
+                        // AI 서버가 접근할 수 있는 절대 경로로 변환
+                        $image_paths[] = realpath($target_file);
                     }
                 }
             }
         }
-        debug_output("AI 서버로 전송할 이미지 URL", $image_urls);
+        debug_output("업로드된 이미지 경로", $image_paths);
 
         // 3. AI 에이전트에 보낼 데이터 구조 생성
         $request_payload = [
             'user_input' => [
                 'survey' => $survey_data, 
-                'image_urls' => $image_urls
+                'image_paths' => $image_paths
             ]
         ];
         debug_output("AI 서버 요청 데이터", $request_payload);
@@ -211,12 +207,10 @@ debug_output("최종 상태", [
 
         <div class="content-wrapper">
             <div class="left-section">
-                <?php if (empty($recommendations)): ?>
-                    <!-- 추천 결과가 없으면 설문 폼 표시 -->
-                    <div class="survey-container">
-                        <div class="survey-progress">
-                            <div class="progress-bar">
-
+                <!-- 왼쪽 섹션: 설문조사 폼 -->
+                <div class="survey-container">
+                    <div class="survey-progress">
+                        <div class="progress-bar">
                             <div class="progress-fill" id="progressFill"></div>
                         </div>
                         <span class="progress-text" id="progressText">1 / 49</span>
@@ -377,26 +371,11 @@ debug_output("최종 상태", [
                             <button type="submit" name="submit_survey" class="submit-btn" id="submitBtn" style="display: none;">취미 추천받기</button>
                         </div>
                     </form>
-                    </div>
-                <?php else: ?>
-                    <!-- 추천 결과가 있으면 결과 표시 -->
-                    <div class="recommendations-container">
-                        <h2>🎉 <?php echo htmlspecialchars($_SESSION['user_nickname']); ?>님을 위한 맞춤 취미 추천</h2>
-                        <p class="recommendations-subtitle">AI가 설문과 사진을 바탕으로 정성껏 작성한 추천 결과입니다.</p>
-                        
-                        <div class="ai-recommendation-box">
-                            <?php echo nl2br(htmlspecialchars($recommendations)); ?>
-                        </div>
-                        
-                        <div class="survey-actions">
-                            <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
-                        </div>
-                    </div>
-                <?php endif; ?>
+                </div>
             </div>
 
-            <div class="right-section" <?php if (!empty($recommendations)) echo 'style="display:none;"'; ?>>
-                <?php if (false): // 추천 결과가 있어도 오른쪽 섹션은 일단 숨김 처리 ?>
+            <div class="right-section">
+                <?php if (!empty($recommendations)): ?>
                     <!-- AI 추천 결과가 있을 경우 -->
                     <div class="recommendations-container">
                         <h3>🎉 맞춤 취미 추천 결과</h3>
@@ -506,16 +485,56 @@ debug_output("최종 상태", [
                 }
             });
 
-            // [수정] 폼 제출(submit) 이벤트가 발생했을 때의 동작을 정의합니다.
-            surveyForm.addEventListener('submit', function(event) {
-                // 마지막 단계 유효성 검사에 실패하면 폼 제출을 중단합니다.
-                if (currentStep === totalSteps && !validateCurrentStep()) {
-                    event.preventDefault(); 
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault(); // 기본 폼 제출(새로고침)을 막습니다.
+                if (!validateCurrentStep()) {
                     alert('마지막 질문에 답변하거나 사진을 추가해주세요.');
                     return;
                 }
+
                 submitBtn.textContent = '분석 중...';
                 submitBtn.disabled = true;
+
+                const formData = new FormData(surveyForm);
+                
+                // fetch API를 사용하여 비동기적으로 데이터 전송
+                fetch('get_ai_recommendation.php', { // 결과를 처리할 새로운 PHP 파일을 호출합니다.
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('네트워크 응답이 올바르지 않습니다.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success && data.recommendation) {
+                        // 성공적으로 결과를 받으면 오른쪽 섹션을 업데이트합니다.
+                        const rightSection = document.querySelector('.right-section');
+                        rightSection.innerHTML = `
+                            <div class="recommendations-container">
+                                <h3>🎉 맞춤 취미 추천 결과</h3>
+                                <div class="ai-recommendation-box" style="margin-top: 20px;">
+                                    ${data.recommendation.replace(/\n/g, '<br>')}
+                                </div>
+                                <div class="survey-actions">
+                                    <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
+                                </div>
+                            </div>`;
+                    } else {
+                        alert('추천을 생성하는 데 실패했습니다: ' + (data.message || '알 수 없는 오류'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    alert('추천 결과를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                })
+                .finally(() => {
+                    // 버튼 상태 복원
+                    submitBtn.textContent = '취미 추천받기';
+                    submitBtn.disabled = false;
+                });
             });
 
             function updateStepDisplay() {
@@ -565,8 +584,11 @@ debug_output("최종 상태", [
                 // ### 추가된 부분: 체크박스 유효성 검사 ###
                 const checkboxInputs = currentQuestionStep.querySelectorAll('input[type="checkbox"]');
                 if (checkboxInputs.length > 0) {
-                    // Q10 체크박스는 필수가 아니므로 항상 true를 반환하여 통과시킵니다.
-                    return true;
+                    const checkedCheckbox = currentQuestionStep.querySelector('input[type="checkbox"]:checked');
+                    // 체크박스는 하나도 선택 안 해도 넘어갈 수 있도록 true를 반환합니다. (필수가 아님)
+                    // 만약 필수로 만들고 싶다면 return checkedCheckbox !== null; 로 변경하세요.
+                    // Q10은 하나 이상 선택해야 하므로, 아래와 같이 수정
+                    return checkedCheckbox !== null;
                 }
 
                 const radioInput = currentQuestionStep.querySelector('input[type="radio"]');
