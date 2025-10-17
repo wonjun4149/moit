@@ -84,14 +84,17 @@ router_chain = router_prompt | llm | StrOutputParser()
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
     logging.info("--- ROUTING ---")
+    
+    # [수정] 다양한 입력 형식에 대응하기 위한 로직 강화
     user_input = state['user_input']
-    # PHP에서 오는 형식은 'survey' 키를 포함하고, 모임 매칭은 'title' 키를 포함합니다.
+    # 취미 추천 요청은 'survey' 키를, 모임 매칭은 'messages' 또는 'title' 키를 포함합니다.
     if 'survey' in user_input:
-        actual_input = user_input
+        actual_input = {"survey": "취미 추천 설문 데이터가 있습니다."} # 라우터에게 의도만 명확히 전달
+    elif "messages" in user_input and isinstance(user_input.get("messages"), list) and user_input["messages"]:
+        content = user_input["messages"][0][1] if len(user_input["messages"][0]) > 1 else {}
+        actual_input = content if isinstance(content, dict) else user_input
     else:
-        # 다른 형식의 입력(예: LangChain Playground)을 위한 호환성 로직
         actual_input = user_input
-
     route_decision = router_chain.invoke({"user_input": actual_input})
     cleaned_decision = route_decision.strip().lower().replace("'", "").replace('"', '')
     logging.info(f"라우팅 결정: {cleaned_decision}")
@@ -243,14 +246,13 @@ def call_meeting_matching_agent(state: MasterAgentState):
     graph_builder.add_edge("rewrite_query", "retrieve")
     meeting_agent = graph_builder.compile()
 
-    # [수정] 라우터와 동일한 로직으로 실제 입력 데이터를 추출합니다.
+    # [수정] 모임 매칭 에이전트가 취미 추천 데이터를 받지 않도록 입력 데이터 추출 로직 수정
     user_input_raw = state['user_input']
     if "messages" in user_input_raw and isinstance(user_input_raw.get("messages"), list) and user_input_raw["messages"]:
         content = user_input_raw["messages"][0][1] if len(user_input_raw["messages"][0]) > 1 else {}
         user_input = content if isinstance(content, dict) else user_input_raw
     else:
         user_input = user_input_raw
-
 
     initial_state = {
         "title": user_input.get("title", ""),
