@@ -84,7 +84,18 @@ router_chain = router_prompt | llm | StrOutputParser()
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
     logging.info("--- ROUTING ---")
-    route_decision = router_chain.invoke({"user_input": state['user_input']})
+    
+    # [수정] 다양한 입력 형식에 대응하기 위한 로직 추가
+    user_input = state['user_input']
+    # PHP에서 오는 형식: {"messages": [["user", {...}]]}
+    if "messages" in user_input and isinstance(user_input.get("messages"), list) and user_input["messages"]:
+        # LangChain의 Message 형식을 고려하여 content 부분만 추출
+        content = user_input["messages"][0][1] if len(user_input["messages"][0]) > 1 else {}
+        actual_input = content if isinstance(content, dict) else user_input
+    else:
+        actual_input = user_input
+
+    route_decision = router_chain.invoke({"user_input": actual_input})
     cleaned_decision = route_decision.strip().lower().replace("'", "").replace('"', '')
     logging.info(f"라우팅 결정: {cleaned_decision}")
     return {"route": cleaned_decision}
@@ -234,7 +245,15 @@ def call_meeting_matching_agent(state: MasterAgentState):
     graph_builder.add_edge("rewrite_query", "retrieve")
     meeting_agent = graph_builder.compile()
 
-    user_input = state['user_input'].get("meeting_info", state['user_input'])
+    # [수정] 라우터와 동일한 로직으로 실제 입력 데이터를 추출합니다.
+    user_input_raw = state['user_input']
+    if "messages" in user_input_raw and isinstance(user_input_raw.get("messages"), list) and user_input_raw["messages"]:
+        content = user_input_raw["messages"][0][1] if len(user_input_raw["messages"][0]) > 1 else {}
+        user_input = content if isinstance(content, dict) else user_input_raw
+    else:
+        user_input = user_input_raw
+
+
     initial_state = {
         "title": user_input.get("title", ""),
         "description": user_input.get("description", ""),
@@ -406,6 +425,14 @@ def call_multimodal_hobby_agent(state: MasterAgentState):
     logging.info("--- CALLING: StateGraph Hobby Supervisor Agent ---")
     
     hobby_info = state["user_input"].get("hobby_info", state["user_input"])
+    # [수정] 다양한 입력 형식에 대응하기 위한 로직 추가
+    user_input = state["user_input"]
+    # Node.js/PHP에서 오는 형식: {"survey": {...}, "user_context": {...}}
+    if "survey" in user_input and "user_context" in user_input:
+        hobby_info = user_input
+    else: # 기존 형식도 호환
+        hobby_info = user_input.get("hobby_info", user_input)
+
     survey_data = hobby_info.get("survey", {})
     image_paths = hobby_info.get("image_paths", [])
 
