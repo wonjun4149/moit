@@ -110,9 +110,11 @@ try {
                                     <div class="meeting-status">
                                         <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
                                         <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
-                                        <button class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
-                                        <button class="btn-delete" data-meeting-id="<?php echo $meeting['id']; ?>">삭제</button>
-                                        <a href="edit_meeting.php?id=<?php echo $meeting['id']; ?>" class="btn-edit">수정</a>
+                                        <button type="button" class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
+                                        <?php if (!$is_past): ?>
+                                            <a href="edit_meeting_form.php?id=<?php echo $meeting['id']; ?>" class="btn-edit">수정</a>
+                                        <?php endif; ?>
+                                        <button type="button" class="btn-delete" data-meeting-id="<?php echo $meeting['id']; ?>">삭제</button>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
