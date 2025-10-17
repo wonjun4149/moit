@@ -22,7 +22,6 @@ try {
     $stmt_user = $pdo->prepare("SELECT nickname, profile_image_path FROM users WHERE id = ?");
     $stmt_user->execute([$user_id]);
     $user = $stmt_user->fetch(PDO::FETCH_ASSOC);
-    error_log('User profile image path from DB: ' . ($user['profile_image_path'] ?? 'not set'));
 
     // 1. 내가 만든 모임 목록 조회
     $stmt_created = $pdo->prepare("
@@ -87,7 +86,9 @@ try {
 
     <main class="main-container">
         <div class="profile-header">
-            <div class="profile-pic" style="background-image: url('../<?php echo htmlspecialchars($user['profile_image_path'] ?? 'assets/default_profile.png'); ?>?t=<?php echo time(); ?>');"></div>
+            <div class="profile-pic">
+                <img src="../<?php echo htmlspecialchars($user['profile_image_path'] ?? 'assets/default_profile.png'); ?>?t=<?php echo time(); ?>" alt="Profile Picture">
+            </div>
             <div class="profile-info">
                 <h2><?php echo htmlspecialchars($_SESSION['user_nickname']); ?> 님</h2>
                 <p>오늘도 새로운 취미를 찾아보세요!</p>

@@ -7,7 +7,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto
 
 /* 프로필 헤더 */
 .profile-header { display: flex; align-items: center; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); margin-bottom: 40px; }
-.profile-pic { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #4A90E2, #357ABD); margin-right: 20px; }
+.profile-pic {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-right: 20px;
+    overflow: hidden; /* This is important to contain the image */
+    background-color: #f0f0f0; /* Fallback color */
+}
+
+.profile-pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* This will make the image cover the area, cropping if necessary */
+}
 .profile-info { flex-grow: 1; }
 .profile-info h2 { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
 .profile-info p { font-size: 16px; color: #666; }

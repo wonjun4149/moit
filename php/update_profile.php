@@ -35,7 +35,6 @@ if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPL
     if (in_array($file_ext, $allowed_exts)) {
         if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $target_path)) {
             $profile_image_path = 'uploads/profile_pictures/' . $new_filename;
-            error_log('New profile image path: ' . $profile_image_path);
         } else {
             redirect('edit_profile_form.php', ['error' => '파일 업로드에 실패했습니다.']);
         }
