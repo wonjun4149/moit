@@ -39,7 +39,7 @@ try {
                 <div class="profile-pic-edit-area">
                     <label for="profile_image" class="profile-pic-preview-label">
                         <div class="profile-pic-preview" style="background-image: url('../<?php echo htmlspecialchars($user['profile_image_path'] ?? 'assets/default_profile.png'); ?>');">
-                            <div class="overlay"><span>사진 변경</span></div>
+                            <div class="overlay">사진 변경</div>
                         </div>
                     </label>
                     <input type="file" id="profile_image" name="profile_image" accept="image/*" style="display: none;">
