@@ -299,8 +299,16 @@ try {
                     const timeRemaining = document.createElement('span');
                     const meetingTime = new Date(`${meeting.meeting_date} ${meeting.meeting_time}`);
                     const now = new Date();
-                    const diffHours = Math.round((meetingTime - now) / (1000 * 60 * 60));
-                    timeRemaining.textContent = `${diffHours}시간 후`;
+                    const diffMs = meetingTime - now;
+                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+                    if (diffHours >= 24) {
+                        const diffDays = Math.floor(diffHours / 24);
+                        const remainingHours = diffHours % 24;
+                        timeRemaining.textContent = `${diffDays}일 ${remainingHours}시간 후`;
+                    } else {
+                        timeRemaining.textContent = `${diffHours}시간 후`;
+                    }
 
                     details.appendChild(location);
                     details.appendChild(timeRemaining);
