@@ -6,43 +6,42 @@ if (!isLoggedIn() || !isset($_SESSION['pending_meeting'])) {
     redirect('meeting.php');
 }
 
-// 세션에서 보류 중이던 모임 데이터 가져오기
-$post_data = $_SESSION['pending_meeting'];
+// 세션에서 보류 중인 모임 데이터 가져오기
+$pending_meeting = $_SESSION['pending_meeting'];
 
 $organizer_id = $_SESSION['user_id'];
-$title = $post_data['title'];
-$description = $post_data['description'];
-$category = $post_data['category'];
-$location = $post_data['location'];
-$max_members = (int)$post_data['max_members'];
-$meeting_date = $post_data['meeting_date'];
-$meeting_time = $post_data['meeting_time'];
-$image_path = null;
+$title = $pending_meeting['title'];
+$description = $pending_meeting['description'];
+$category = $pending_meeting['category'];
+$location = $pending_meeting['location'];
+$max_members = (int)$pending_meeting['max_members'];
+$meeting_date = $pending_meeting['meeting_date'];
+$meeting_time = $pending_meeting['meeting_time'];
+$image_path = 'assets/default_image.png'; // 기본 이미지
 
-// --- 1. 파일 업로드 처리 ---
+// 파일 업로드 처리
 if (isset($_SESSION['pending_meeting_image'])) {
-    $image_info = $_SESSION['pending_meeting_image'];
-    $upload_dir = '../uploads/';
-    
-    if (!is_dir($upload_dir)) { mkdir($upload_dir, 0775, true); }
-    if (!is_writable($upload_dir)) { die("오류: 'uploads' 폴더에 쓰기 권한이 없습니다."); }
+    $pending_image = $_SESSION['pending_meeting_image'];
+    $tmp_path = $pending_image['tmp_path'];
+    $original_name = $pending_image['original_name'];
 
-    $file_name = uniqid() . '-' . basename($image_info['original_name']);
+    $upload_dir = '../uploads/';
+    if (!is_dir($upload_dir)) { mkdir($upload_dir, 0775, true); }
+
+    $file_name = uniqid() . '-' . basename($original_name);
     $target_file = $upload_dir . $file_name;
 
-    // 세션에 저장된 임시 파일을 최종 목적지로 이동
-    if (rename($image_info['tmp_path'], $target_file)) {
+    // 임시 파일을 최종 위치로 이동
+    if (rename($tmp_path, $target_file)) {
         $image_path = 'uploads/' . $file_name;
     } else {
-        // 임시 파일이 없는 경우 등 예외 처리
-        if (file_exists($image_info['tmp_path'])) {
-            unlink($image_info['tmp_path']); // 실패 시 임시 파일 삭제
-        }
-        die("파일 업로드 실패. 임시 파일을 찾을 수 없거나 옮길 수 없습니다.");
+        // 오류 처리: 임시 파일 이동 실패
+        // 이 경우 기본 이미지로 진행하거나 오류 메시지를 표시할 수 있습니다.
+        error_log("Failed to move pending image from {$tmp_path} to {$target_file}");
     }
 }
 
-// --- 2. 데이터베이스에 저장 ---
+// 데이터베이스에 저장
 try {
     $pdo = getDBConnection();
     $sql = "INSERT INTO meetings (organizer_id, title, description, category, location, max_members, meeting_date, meeting_time, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -51,7 +50,7 @@ try {
     if ($stmt->execute([$organizer_id, $title, $description, $category, $location, $max_members, $meeting_date, $meeting_time, $image_path])) {
         $new_meeting_id = $pdo->lastInsertId();
         
-        // --- 3. Pinecone 업데이트 ---
+        // Pinecone 업데이트 (create_meeting.php와 동일한 로직)
         $api_data = [
             'meeting_id' => (string)$new_meeting_id,
             'title' => $title,
@@ -70,19 +69,18 @@ try {
         curl_exec($ch);
         curl_close($ch);
 
-        // --- 4. 세션 데이터 정리 ---
+        // 사용된 세션 변수 정리
         unset($_SESSION['pending_meeting']);
         unset($_SESSION['pending_meeting_image']);
         unset($_SESSION['recommendations']);
 
-        // --- 5. 모임 목록으로 리다이렉트 ---
-        redirect('meeting.php');
-
+        // 새로 생성된 모임 상세 페이지로 리디렉션
+        redirect('meeting_detail.php?id=' . $new_meeting_id);
     } else {
-        die("데이터베이스 실행 오류: 저장이 실패했습니다.");
+        die("데이터베이스 실행 오류");
     }
-
 } catch (PDOException $e) {
     die("데이터베이스 오류: " . $e->getMessage());
 }
+
 ?>
