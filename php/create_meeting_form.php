@@ -78,6 +78,18 @@ $site_title = "MOIT - 새 모임 만들기";
         </div>
     </main>
 
+    <div id="similar-meetings-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <h2>비슷한 모임이 이미 있어요!</h2>
+            <p>새로운 모임을 만들기 전에, 혹시 이런 모임은 어떠세요?</p>
+            <div id="similar-meetings-list"></div>
+            <div class="modal-footer">
+                <button id="force-create-meeting-btn" class="btn-primary">그래도 새로 만들기</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/navbar.js"></script>
     <script>
         const fileInput = document.getElementById('create-image');
@@ -92,32 +104,95 @@ $site_title = "MOIT - 새 모임 만들기";
             });
         }
 
-        // 폼 제출 유효성 검사
         const createMeetingForm = document.getElementById('create-meeting-form');
+        const similarMeetingsModal = document.getElementById('similar-meetings-modal');
+        const closeModalBtn = similarMeetingsModal.querySelector('.modal-close-btn');
+        const forceCreateBtn = document.getElementById('force-create-meeting-btn');
+
+        let isSubmitting = false; // 중복 제출 방지 플래그
+
         if (createMeetingForm) {
             createMeetingForm.addEventListener('submit', function(event) {
+                event.preventDefault(); // 기본 폼 제출 중단
+
+                if (isSubmitting) return; // 이미 제출 중이면 중단
+
                 const dateInput = document.getElementById('create-date').value;
                 const timeInput = document.getElementById('create-time').value;
 
                 if (dateInput && timeInput) {
                     const selectedDateTime = new Date(dateInput + 'T' + timeInput);
                     const now = new Date();
-
                     if (selectedDateTime < now) {
-                        event.preventDefault(); // 폼 제출 방지
                         alert('지난 시간으로는 모임을 생성할 수 없습니다. 현재 시간 이후로 설정해주세요.');
                         return;
                     }
                 }
 
-                // 폼 유효성 검사를 통과하지 못하면 기본 제출 동작을 막음
                 if (!this.checkValidity()) {
-                    event.preventDefault();
-                    // 브라우저의 내장 유효성 검사 UI를 강제로 표시
                     this.reportValidity();
+                    return;
                 }
+
+                isSubmitting = true; // 제출 시작
+
+                const formData = new FormData(this);
+
+                fetch('check_similar_meetings.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        displaySimilarMeetings(data);
+                        similarMeetingsModal.style.display = 'flex';
+                    } else {
+                        createMeetingForm.submit(); // 비슷한 모임 없으면 바로 제출
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking for similar meetings:', error);
+                    createMeetingForm.submit(); // 에러 발생 시에도 생성은 가능하도록
+                })
+                .finally(() => {
+                    isSubmitting = false; // 제출 플래그 리셋
+                });
             });
         }
+
+        function displaySimilarMeetings(meetings) {
+            const listElement = document.getElementById('similar-meetings-list');
+            listElement.innerHTML = ''; // 기존 목록 초기화
+
+            meetings.forEach(meeting => {
+                const meetingItem = document.createElement('div');
+                meetingItem.classList.add('similar-meeting-item');
+                meetingItem.innerHTML = `
+                    <div class="similar-meeting-info">
+                        <strong>${meeting.title}</strong>
+                        <span>${meeting.category} / ${meeting.location}</span>
+                    </div>
+                    <a href="meeting_detail.php?id=${meeting.id}" class="btn-secondary" target="_blank">자세히 보기</a>
+                `;
+                listElement.appendChild(meetingItem);
+            });
+        }
+
+        closeModalBtn.addEventListener('click', () => {
+            similarMeetingsModal.style.display = 'none';
+        });
+
+        forceCreateBtn.addEventListener('click', () => {
+            createMeetingForm.submit();
+        });
+
+        similarMeetingsModal.addEventListener('click', (e) => {
+            if (e.target === similarMeetingsModal) {
+                similarMeetingsModal.style.display = 'none';
+            }
+        });
+
     </script>
 </body>
 </html>
