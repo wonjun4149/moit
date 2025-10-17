@@ -242,9 +242,9 @@ body {
     background-color: #fff;
     border: 1px solid #ddd;
     border-radius: 8px;
-    padding: 5px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
 }
 
 .search-input-wrapper:focus-within {
@@ -256,7 +256,7 @@ body {
     border: none;
     outline: none;
     flex-grow: 1;
-    padding: 10px;
+    padding: 15px;
     font-size: 1em;
     background-color: transparent;
 }
@@ -265,11 +265,11 @@ body {
     background-color: #007bff;
     color: white;
     border: none;
-    border-radius: 6px;
-    padding: 10px 15px;
+    padding: 15px 20px;
     cursor: pointer;
     font-size: 1em;
     transition: background-color 0.2s ease;
+    align-self: stretch;
 }
 
 #search-button:hover {
