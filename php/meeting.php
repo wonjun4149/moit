@@ -31,6 +31,7 @@ try {
             END) AS is_joined
         FROM meetings m
         JOIN users u ON m.organizer_id = u.id
+        WHERE CONCAT(m.meeting_date, ' ', m.meeting_time) >= NOW()
         ORDER BY m.created_at DESC
     ";
     
