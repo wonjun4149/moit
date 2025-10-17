@@ -607,3 +607,83 @@ body {
 .btn-cancel:hover { background-color: #5a6268; }
 .btn-secondary { background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }
 .btn-secondary:hover { background-color: #e2e6ea; }
+
+/* Similar Meetings Modal */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    color: #aaa;
+    cursor: pointer;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.5em;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: #666;
+}
+
+#similar-meetings-list {
+    margin-bottom: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.similar-meeting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.similar-meeting-item:hover {
+    background-color: #f5f5f5;
+}
+
+.similar-meeting-info strong {
+    display: block;
+    font-weight: 600;
+}
+
+.similar-meeting-info span {
+    font-size: 0.9em;
+    color: #888;
+}
+
+.modal-footer {
+    text-align: right;
+    margin-top: 20px;
+}
