@@ -65,22 +65,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
     
     try {
         // 1. 설문 데이터 수집
-        $survey_data = $_POST; // POST 데이터를 그대로 사용
-        unset($survey_data['submit_survey']); // 불필요한 데이터 제거
-        if(isset($survey_data['debug'])) unset($survey_data['debug']);
+        $survey_data = [];
+        foreach ($_POST as $key => $value) {
+            if (strpos($key, 'Q') === 0) {
+                // Q10과 같은 체크박스는 배열로 들어오므로 그대로 유지
+                $q_num = intval(substr($key, 1));
+                if (is_array($value)) {
+                    $survey_data[$q_num] = $value;
+                } else {
+                    // 라디오/likert 값은 숫자 값으로 변환
+                    $survey_data[$q_num] = intval($value);
+                }
+            }
+        }
+        debug_output("정리된 설문 데이터", $survey_data);
 
-        // 2. AI 에이전트에 보낼 데이터 구조 생성
+        // 2. 이미지 파일 처리
+        $image_paths = [];
+        if (isset($_FILES['hobby_photos'])) {
+            $upload_dir = '../uploads/hobby_photos/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0775, true);
+            }
+
+            foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
+                if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
+                    $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
+                    $target_file = $upload_dir . $file_name;
+                    if (move_uploaded_file($tmp_name, $target_file)) {
+                        // AI 서버가 접근할 수 있는 절대 경로로 변환
+                        $image_paths[] = realpath($target_file);
+                    }
+                }
+            }
+        }
+        debug_output("업로드된 이미지 경로", $image_paths);
+
+        // 3. AI 에이전트에 보낼 데이터 구조 생성
         $request_payload = [
-            'user_input' => [
-                'survey' => $survey_data,
-                'user_context' => [
-                    'user_id' => $_SESSION['user_id']
-                ]
-            ]
+            'user_input' => [ 'survey' => $survey_data, 'image_paths' => $image_paths ]
         ];
         debug_output("AI 서버 요청 데이터", $request_payload);
 
-        // 3. cURL을 사용해 AI 에이전트 API 호출
+        // 4. cURL을 사용해 AI 에이전트 API 호출
         $ch = curl_init('http://127.0.0.1:8000/agent/invoke');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
@@ -90,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
             'Content-Length: ' . strlen(json_encode($request_payload))
         ]);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // 연결 타임아웃 5초
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);      // 전체 실행 타임아웃 30초
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);      // 이미지 분석을 위해 타임아웃 60초로 연장
 
         $response_body = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -104,28 +131,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
 
         debug_output("AI 서버 응답", json_decode($response_body, true));
 
-        // 4. AI 추천 결과 파싱 및 변환
+        // 5. AI 추천 결과 파싱 및 변환
         $response_data = json_decode($response_body, true);
-        if (isset($response_data['final_answer'])) {
-            $json_part = substr($response_data['final_answer'], strpos($response_data['final_answer'], '['));
-            if ($json_part) {
-                $parsed_recos = json_decode($json_part, true);
-                if (is_array($parsed_recos)) {
-                    $recommendations = array_map(function($reco) {
-                        return [
-                            'name' => $reco['name_ko'] ?? '이름 없음',
-                            'description' => $reco['short_desc'] ?? '설명 없음',
-                            'score' => $reco['score_total'] ?? 0.5,
-                            'id' => $reco['hobby_id'] ?? 0,
-                            'reason' => $reco['reason'] ?? ''
-                        ];
-                    }, $parsed_recos);
-                }
-            }
+        if (isset($response_data['final_answer']) && !empty($response_data['final_answer'])) {
+            // AI 응답이 추천 메시지 전체이므로 그대로 사용
+            $recommendations = $response_data['final_answer'];
         }
 
         if (empty($recommendations)) {
-             $error_message = "AI가 추천을 생성하지 못했거나, 응답을 처리하는 데 실패했습니다.";
+             $error_message = "AI가 추천을 생성하지 못했거나, 응답을 처리하는 데 실패했습니다. AI 서버 로그를 확인해주세요.";
              debug_output("추천 결과 파싱 실패 또는 빈 결과", $response_data);
         }
 
@@ -183,13 +197,13 @@ debug_output("최종 상태", [
                             <div class="progress-bar">
                                 <div class="progress-fill" id="progressFill"></div>
                             </div>
-                            <span class="progress-text" id="progressText">1 / 48</span>
+                            <span class="progress-text" id="progressText">1 / 49</span>
                         </div>
 
                         <h2>당신의 취향을 알려주세요</h2>
                         <p class="survey-subtitle">자신을 위한 딱 맞는 활동을 찾아드릴게요!</p>
 
-                        <form method="POST" class="survey-form" id="surveyForm">
+                        <form method="POST" class="survey-form" id="surveyForm" enctype="multipart/form-data">
                             <?php if ($debug_mode): ?>
                                 <input type="hidden" name="debug" value="1">
                             <?php endif; ?>
@@ -273,9 +287,9 @@ debug_output("최종 상태", [
                                         <div class="question-group">
                                             <label class="question-label"><?php echo $q['label']; ?></label>
                                             <div class="option-group-inline">
-                                                <?php foreach ($q['options'] as $opt): ?>
+                                                <?php foreach ($q['options'] as $i => $opt): ?>
                                                 <label class="option-label-inline">
-                                                    <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $opt; ?>" required>
+                                                    <input type="radio" name="<?php echo $q['name']; ?>" value="<?php echo $i + 1; ?>" required>
                                                     <span><?php echo $opt; ?></span>
                                                 </label>
                                                 <?php endforeach; ?>
@@ -305,9 +319,9 @@ debug_output("최종 상태", [
                                         <div class="question-group">
                                             <label class="question-label"><?php echo $q['label']; ?></label>
                                             <div class="option-group-inline checkbox-group">
-                                                <?php foreach ($q['options'] as $opt): ?>
+                                                <?php foreach ($q['options'] as $i => $opt): ?>
                                                 <label class="option-label-inline">
-                                                    <input type="checkbox" name="<?php echo $q['name']; ?>[]" value="<?php echo $opt; ?>">
+                                                    <input type="checkbox" name="<?php echo $q['name']; ?>[]" value="<?php echo $i + 1; ?>">
                                                     <span><?php echo $opt; ?></span>
                                                 </label>
                                                 <?php endforeach; ?>
@@ -316,6 +330,24 @@ debug_output("최종 상태", [
                                     <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
+
+                            <!-- 사진 업로드 단계 추가 -->
+                            <div class="question-step" data-step="49">
+                                <div class="question-group">
+                                    <label class="question-label">📸 마지막으로, 당신의 일상이 담긴 사진을 올려주세요.</label>
+                                    <div class="photo-upload-guide">
+                                        <p>AI가 사진을 분석하여 당신의 잠재적인 관심사를 파악하는 데 도움을 줍니다.</p>
+                                        <ul>
+                                            <li><strong>최근 한 달 동안</strong> 찍은 사진 중 마음에 드는 것을 골라주세요.</li>
+                                            <li>과거의 사진 중 <strong>돌아가고 싶은 순간</strong>이나 <strong>간직하고 싶은 추억</strong>이 담긴 사진도 좋습니다.</li>
+                                            <li>인물, 사물, 풍경, 음식 등 <strong>다양한 사진</strong>을 올릴수록 분석 정확도가 높아집니다. (최대 10장)</li>
+                                        </ul>
+                                    </div>
+                                    <input type="file" name="hobby_photos[]" id="hobby_photos" multiple accept="image/*" style="margin-top: 15px;">
+                                    <div id="photo-preview" class="photo-preview-container"></div>
+                                </div>
+                            </div>
+
 
                             <div class="survey-buttons">
                                 <button type="button" class="btn-prev" id="prevBtn" style="display: none;">이전</button>
@@ -327,28 +359,13 @@ debug_output("최종 상태", [
                 <?php else: ?>
                     <div class="recommendations-container">
                         <h2>🎉 맞춤 취미 추천</h2>
-                        <p class="recommendations-subtitle">설문 결과를 바탕으로 <?php echo count($recommendations); ?>개의 취미를 추천해드려요!</p>
+                        <p class="recommendations-subtitle">AI가 당신의 성향과 사진을 분석하여 아래와 같이 추천해 드립니다.</p>
                         
-                        <div class="hobby-cards">
-                            <?php foreach ($recommendations as $hobby): ?>
-                                <div class="hobby-card" onclick="loadMeetups(<?php echo $hobby['id']; ?>)">
-                                    <div class="hobby-card-header">
-                                        <h3 class="hobby-name"><?php echo htmlspecialchars($hobby['name']); ?></h3>
-                                    </div>
-                                    <p class="hobby-description"><?php echo htmlspecialchars($hobby['description']); ?></p>
-                                    <div class="hobby-tags">
-                                        <?php 
-                                            $reasons = explode(' · ', $hobby['reason']);
-                                            foreach (array_filter($reasons) as $reason_tag): 
-                                        ?>
-                                            <span class="tag"><?php echo htmlspecialchars($reason_tag); ?></span>
-                                        <?php endforeach; ?>
-                                    </div>
-                                    <div class="hobby-score">
-                                        <span>추천도: <?php echo round(($hobby['score'] ?? 0.5) * 100); ?>%</span>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                        <div class="ai-recommendation-box">
+                            <?php 
+                                // AI가 생성한 텍스트를 HTML로 변환 (줄바꿈 등)
+                                echo nl2br(htmlspecialchars($recommendations)); 
+                            ?>
                         </div>
                         
                         <div class="survey-actions">
@@ -384,7 +401,7 @@ debug_output("최종 상태", [
         if (surveyForm) {
             // ### 변경된 부분: 전체 문항 수 업데이트 ###
             let currentStep = 1;
-            const totalSteps = 48;
+            const totalSteps = 49; // 사진 업로드 단계 포함
 
             const questionSteps = document.querySelectorAll('.question-step');
             const prevBtn = document.getElementById('prevBtn');
@@ -397,6 +414,30 @@ debug_output("최종 상태", [
             const stage1Header = document.getElementById('stage1-header');
             const stage2Header = document.getElementById('stage2-header');
             const stage3Header = document.getElementById('stage3-header');
+
+            // 사진 미리보기 기능
+            const photoInput = document.getElementById('hobby_photos');
+            const photoPreview = document.getElementById('photo-preview');
+            if(photoInput) {
+                photoInput.addEventListener('change', function() {
+                    photoPreview.innerHTML = ''; // 기존 미리보기 초기화
+                    if (this.files.length > 10) {
+                        alert('사진은 최대 10장까지 업로드할 수 있습니다.');
+                        this.value = ''; // 파일 선택 취소
+                        return;
+                    }
+                    Array.from(this.files).forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            photoPreview.appendChild(img);
+                        }
+                        reader.readAsDataURL(file);
+                    });
+                });
+            }
+
 
             const allRadioButtons = surveyForm.querySelectorAll('input[type="radio"]');
             allRadioButtons.forEach(radio => {
@@ -466,7 +507,7 @@ debug_output("최종 상태", [
                     stage1Header.style.display = 'block';
                 } else if (currentStep >= 13 && currentStep <= 30) {
                     stage2Header.style.display = 'block';
-                } else if (currentStep >= 31) {
+                } else if (currentStep >= 31 && currentStep <= 48) {
                     stage3Header.style.display = 'block';
                 }
 
@@ -491,13 +532,19 @@ debug_output("최종 상태", [
                 const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
                 if (!currentQuestionStep) return false;
 
+                // 사진 업로드 단계는 유효성 검사 통과
+                if (currentStep === totalSteps) {
+                    return true;
+                }
+
                 // ### 추가된 부분: 체크박스 유효성 검사 ###
                 const checkboxInputs = currentQuestionStep.querySelectorAll('input[type="checkbox"]');
                 if (checkboxInputs.length > 0) {
                     const checkedCheckbox = currentQuestionStep.querySelector('input[type="checkbox"]:checked');
                     // 체크박스는 하나도 선택 안 해도 넘어갈 수 있도록 true를 반환합니다. (필수가 아님)
                     // 만약 필수로 만들고 싶다면 return checkedCheckbox !== null; 로 변경하세요.
-                    return true; 
+                    // Q10은 하나 이상 선택해야 하므로, 아래와 같이 수정
+                    return checkedCheckbox !== null;
                 }
 
                 const radioInput = currentQuestionStep.querySelector('input[type="radio"]');

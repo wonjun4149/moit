@@ -278,6 +278,42 @@ body {
 .hobby-info .hobby-category { font-size: 12px; color: var(--text-light-color); }
 .hobby-count { font-size: 14px; color: var(--primary-color); font-weight: 500; }
 
+/* 6-1. AI 추천 결과 박스 */
+.ai-recommendation-box {
+    background: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    line-height: 1.8;
+    font-size: 16px;
+    color: #495057;
+}
+
+/* 6-2. 사진 업로드 가이드 및 미리보기 */
+.photo-upload-guide {
+    background: #e3f2fd;
+    border-left: 4px solid var(--primary-color);
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 8px;
+}
+.photo-upload-guide p { margin-bottom: 10px; font-size: 15px; }
+.photo-upload-guide ul { padding-left: 20px; font-size: 14px; color: #555; }
+
+.photo-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+.photo-preview-container img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
 /* 7. 반응형 디자인 */
 /* 992px 이하 반응형 레이아웃 제거 (사용자 요청) */
 
