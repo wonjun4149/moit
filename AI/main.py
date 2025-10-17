@@ -186,6 +186,7 @@ def call_meeting_matching_agent(state: MasterAgentState):
             title = metadata.get('title', 'N/A')
             context_str += f"모임 {i+1}:\n  - meeting_id: {meeting_id}\n  - title: {title}\n  - content: {doc.page_content}\n\n"
         if not m_state['context']: context_str = "유사한 모임을 찾지 못했습니다."
+        logging.info(f"--- (Sub) 최종 추천 생성을 위해 LLM에 전달할 컨텍스트 ---\n{context_str}")
         answer = generate_chain.invoke({"context": context_str, "query": m_state['query']})
         return {"answer": answer}
 
