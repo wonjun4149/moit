@@ -84,15 +84,12 @@ router_chain = router_prompt | llm | StrOutputParser()
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
     logging.info("--- ROUTING ---")
-    
-    # [수정] 다양한 입력 형식에 대응하기 위한 로직 추가
     user_input = state['user_input']
-    # PHP에서 오는 형식: {"messages": [["user", {...}]]}
-    if "messages" in user_input and isinstance(user_input.get("messages"), list) and user_input["messages"]:
-        # LangChain의 Message 형식을 고려하여 content 부분만 추출
-        content = user_input["messages"][0][1] if len(user_input["messages"][0]) > 1 else {}
-        actual_input = content if isinstance(content, dict) else user_input
+    # PHP에서 오는 형식은 'survey' 키를 포함하고, 모임 매칭은 'title' 키를 포함합니다.
+    if 'survey' in user_input:
+        actual_input = user_input
     else:
+        # 다른 형식의 입력(예: LangChain Playground)을 위한 호환성 로직
         actual_input = user_input
 
     route_decision = router_chain.invoke({"user_input": actual_input})
@@ -424,18 +421,10 @@ hobby_supervisor_agent = hobby_graph_builder.compile()
 def call_multimodal_hobby_agent(state: MasterAgentState):
     """'StateGraph 기반 취미 추천 에이전트'를 호출하고 결과를 받아오는 노드"""
     logging.info("--- CALLING: StateGraph Hobby Supervisor Agent ---")
-    
-    hobby_info = state["user_input"].get("hobby_info", state["user_input"])
-    # [수정] 다양한 입력 형식에 대응하기 위한 로직 추가
-    user_input = state["user_input"]
-    # Node.js/PHP에서 오는 형식: {"survey": {...}, "user_context": {...}}
-    if "survey" in user_input and "user_context" in user_input:
-        hobby_info = user_input
-    else: # 기존 형식도 호환
-        hobby_info = user_input.get("hobby_info", user_input)
 
-    survey_data = hobby_info.get("survey", {})
-    image_paths = hobby_info.get("image_paths", [])
+    user_input = state["user_input"]
+    survey_data = user_input.get("survey", {})
+    image_paths = user_input.get("image_paths", [])
 
     input_data = {"survey_data": survey_data, "image_paths": image_paths}
     
