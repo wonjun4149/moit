@@ -266,8 +266,43 @@ try {
                 });
             }
 
-            searchButton.addEventListener('click', applyFilters);
             searchInput.addEventListener('keyup', applyFilters);
+
+            // 마감 임박 모임 불러오기
+            function renderDeadlineMeetings(meetings) {
+                const deadlineBox = document.querySelector('.deadline-box');
+                deadlineBox.innerHTML = '<h4>🔥 마감 임박!</h4>'; // 로딩 메시지 제거
+
+                if (meetings.length === 0) {
+                    deadlineBox.innerHTML += '<p>마감 임박 모임이 없습니다.</p>';
+                    return;
+                }
+
+                const list = document.createElement('ul');
+                list.className = 'deadline-list';
+
+                meetings.slice(0, 3).forEach(meeting => { // 상위 3개 표시
+                    const item = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = `meeting_detail.php?id=${meeting.id}`;
+                    link.textContent = meeting.title;
+                    item.appendChild(link);
+                    list.appendChild(item);
+                });
+
+                deadlineBox.appendChild(list);
+            }
+
+            fetch('get_meetings.php?sort=deadline')
+                .then(response => response.json())
+                .then(data => {
+                    renderDeadlineMeetings(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching deadline meetings:', error);
+                    const deadlineBox = document.querySelector('.deadline-box');
+                    deadlineBox.innerHTML = '<h4>🔥 마감 임박!</h4><p>모임 정보를 불러오는데 실패했습니다.</p>';
+                });
         });
     </script>
 </body>
