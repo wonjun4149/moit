@@ -29,9 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         'time' => $meeting_date . ' ' . $meeting_time
     ];
 
+    // [수정] AI 서버가 기대하는 `user_input` 키로 전체 데이터를 감싸줍니다.
     $agent_input = [
-        'messages' => [
-            ['user', $meeting_info] // content 부분에 딕셔너리를 직접 전달
+        'user_input' => [
+            'messages' => [
+                ['user', $meeting_info]
+            ]
         ]
     ];
 
