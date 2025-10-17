@@ -490,7 +490,13 @@ debug_output("최종 상태", [
             });
 
             // [수정] 폼 제출 이벤트를 submit 버튼이 아닌 form 자체에 연결합니다.
-            surveyForm.addEventListener('submit', function(e) {
+            surveyForm.addEventListener('submit', function(event) {
+                // 마지막 단계 유효성 검사 (필수)
+                if (!validateCurrentStep()) {
+                    event.preventDefault(); // 유효성 검사 실패 시 폼 제출 중단
+                    alert('마지막 질문에 답변하거나 사진을 추가해주세요.');
+                    return;
+                }
                 // 버튼 텍스트를 '분석 중...'으로 변경
                 submitBtn.textContent = '분석 중...';
                 submitBtn.disabled = true;
