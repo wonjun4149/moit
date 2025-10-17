@@ -489,56 +489,11 @@ debug_output("최종 상태", [
                 }
             });
 
-            submitBtn.addEventListener('click', function(e) {
-                e.preventDefault(); // 기본 폼 제출(새로고침)을 막습니다.
-                if (!validateCurrentStep()) {
-                    alert('마지막 질문에 답변하거나 사진을 추가해주세요.');
-                    return;
-                }
-
+            // [수정] 폼 제출 이벤트를 submit 버튼이 아닌 form 자체에 연결합니다.
+            surveyForm.addEventListener('submit', function(e) {
+                // 버튼 텍스트를 '분석 중...'으로 변경
                 submitBtn.textContent = '분석 중...';
                 submitBtn.disabled = true;
-
-                const formData = new FormData(surveyForm);
-                
-                // fetch API를 사용하여 비동기적으로 데이터 전송
-                fetch('get_ai_recommendation.php', { // 결과를 처리할 새로운 PHP 파일을 호출합니다.
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('네트워크 응답이 올바르지 않습니다.');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success && data.recommendation) {
-                        // 성공적으로 결과를 받으면 오른쪽 섹션을 업데이트합니다.
-                        const rightSection = document.querySelector('.right-section');
-                        rightSection.innerHTML = `
-                            <div class="recommendations-container">
-                                <h3>🎉 맞춤 취미 추천 결과</h3>
-                                <div class="ai-recommendation-box" style="margin-top: 20px;">
-                                    ${data.recommendation.replace(/\n/g, '<br>')}
-                                </div>
-                                <div class="survey-actions">
-                                    <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
-                                </div>
-                            </div>`;
-                    } else {
-                        alert('추천을 생성하는 데 실패했습니다: ' + (data.message || '알 수 없는 오류'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Fetch Error:', error);
-                    alert('추천 결과를 가져오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-                })
-                .finally(() => {
-                    // 버튼 상태 복원
-                    submitBtn.textContent = '취미 추천받기';
-                    submitBtn.disabled = false;
-                });
             });
 
             function updateStepDisplay() {
