@@ -1,4 +1,4 @@
-# main_V3.py (main_tea.py 기반 + ReAct 취미 추천 에이전트 이식)
+# main_V3.py (main_tea.py 기반 + StateGraph 취미 추천 에이전트 이식)
 
 # --- 1. 기본 라이브러리 import ---
 from fastapi import FastAPI, HTTPException
@@ -28,8 +28,8 @@ from langchain_core.documents import Document
 # --- 4. 환경 설정 및 FastAPI 앱 초기화 ---
 load_dotenv()
 app = FastAPI(
-    title="MOIT AI Agent Server v3 (ReAct 이식)",
-    description="main_tea.py 기반 위에 ReAct 취미 추천 에이전트를 이식한 버전",
+    title="MOIT AI Agent Server v3 (StateGraph 이식)",
+    description="main_tea.py 기반 위에 StateGraph 취미 추천 에이전트를 이식한 버전",
     version="3.0.0",
 )
 
@@ -257,11 +257,16 @@ def call_meeting_matching_agent(state: MasterAgentState):
         return {"final_answer": empty_recommendation}
 
 
-# 전문가 2: 취미 추천 에이전트 (ReAct) - main_V2/V3의 로직을 이식
+# --- 전문가 2: 취미 추천 에이전트 (StateGraph 기반으로 교체) ---
+
+# 2-1. 취미 추천에 사용될 도구(Tool) 정의
 @tool
 def analyze_photo_tool(image_paths: list[str]) -> str:
     """사용자의 사진(이미지 파일 경로 리스트)을 입력받아, 그 사람의 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다."""
     from PIL import Image
+    if not image_paths:
+        logging.info("--- 🖼️ 분석할 사진이 없어 사진 분석 단계를 건너뜁니다. ---")
+        return "사용자가 제공한 사진이 없습니다."
     try:
         logging.info(f"--- 📸 '사진 분석 전문가'가 작업을 시작합니다. (이미지 {len(image_paths)}개) ---")
         model = genai.GenerativeModel('gemini-2.5-flash')
@@ -330,56 +335,85 @@ def summarize_survey_profile_tool(survey_profile: dict) -> str:
         logging.error(f"설문 요약 중 오류 발생: {e}", exc_info=True)
         return f"오류: 설문 요약 중 문제가 발생했습니다: {e}"
 
-hobby_tools = [analyze_survey_tool, summarize_survey_profile_tool, analyze_photo_tool]
-hobby_supervisor_prompt = """당신은 사용자의 사진과 설문 결과를 종합하여 맞춤형 취미를 추천하는 AI 큐레이터입니다.
-당신의 목표는 아래 전문가(도구)들로부터 받은 분석 보고서를 종합하여, 최종적으로 사용자에게 감동을 주는 맞춤형 추천 메시지를 작성하는 것입니다.
+# 2-2. 취미 추천 StateGraph 정의
+class HobbyAgentState(TypedDict):
+    survey_data: dict
+    image_paths: List[str]
+    survey_profile: dict
+    survey_summary: str
+    photo_analysis: str
+    final_recommendation: str
 
-[당신이 지휘할 수 있는 전문가들]
-- `analyze_survey_tool`: 사용자의 설문 응답(JSON 문자열)을 받아, 정량적인 성향 프로필(딕셔너리)로 변환합니다.
-- `summarize_survey_profile_tool`: `analyze_survey_tool`의 결과(딕셔너리)를 받아, 사람이 이해하기 쉬운 텍스트로 요약합니다.
-- `analyze_photo_tool`: 사용자의 사진들을 분석하여 외면적 성향과 활동성을 파악합니다.
+def analyze_survey_node(state: HobbyAgentState):
+    """설문 데이터를 분석하여 정량 프로필을 생성하는 노드"""
+    survey_json_string = json.dumps(state["survey_data"], ensure_ascii=False)
+    survey_profile = analyze_survey_tool.invoke({"survey_json_string": survey_json_string})
+    return {"survey_profile": survey_profile}
 
-다음과 같은 단계로 작업을 **반드시 순서대로** 수행해주세요:
+def summarize_survey_node(state: HobbyAgentState):
+    """정량 프로필을 텍스트로 요약하는 노드"""
+    survey_summary = summarize_survey_profile_tool.invoke({"survey_profile": state["survey_profile"]})
+    return {"survey_summary": survey_summary}
 
-1.  **1단계 (설문 정량 분석):** `analyze_survey_tool`을 사용하여 사용자의 설문 응답을 분석하고, 그 결과로 나온 정량적인 프로필(딕셔너리)을 정확히 확인하세요.
+def analyze_photo_node(state: HobbyAgentState):
+    """사진을 분석하는 노드"""
+    photo_analysis = analyze_photo_tool.invoke({"image_paths": state.get("image_paths", [])})
+    return {"photo_analysis": photo_analysis}
 
-2.  **2단계 (설문 텍스트 요약):** 바로 위 1단계의 실행 결과를 그대로 `summarize_survey_profile_tool`의 `survey_profile` 인자(input)로 전달하여, **사용자의 내면적인 성향(내향성, 회복 추구 등)**이 담긴 텍스트 요약 보고서를 받으세요.
+def generate_final_recommendation_node(state: HobbyAgentState):
+    """모든 분석 결과를 종합하여 최종 추천 메시지를 생성하는 노드"""
+    logging.info("--- 🏁 '최종 추천 전문가'가 작업을 시작합니다. ---")
+    final_prompt_template = """당신은 사용자의 다양한 정보를 종합하여 맞춤형 취미를 추천하는 AI 큐레이터입니다.
+아래 제공된 두 가지 분석 보고서를 바탕으로, 사용자에게 감동을 주는 최종 추천 메시지를 작성해주세요.
 
-3.  **3단계 (사진 정성 분석):** `analyze_photo_tool`을 사용하여 사용자의 사진을 분석하고, **사용자의 외면적인 활동성(운동, 사회성 등)**이 담긴 텍스트 분석 보고서를 받으세요.
+[분석 보고서 1: 내면 성향 분석 (설문 기반)]
+{survey_summary}
 
-4.  **4단계 (최종 종합 및 추천):**
-    - 위 2단계와 3단계에서 얻은 **두 개의 핵심 텍스트 보고서를 나란히 비교 분석**하세요.
-    - **[매우 중요]** 두 보고서의 내용이 서로 상반될 경우(예: 설문은 내향적, 사진은 외향적), 이 **차이점을 명확히 인지하고 언급**하며, **두 가지 성향을 모두 아우를 수 있는 균형 잡힌 추천**을 하는 것이 당신의 가장 중요한 임무입니다.
-    - 최종적으로 사용자에게 가장 적합한 취미 3가지를 추천해주세요. 각 취미를 추천하는 이유를 두 보고서의 단서를 모두 근거로 들어 설득력 있게 설명해야 합니다.
+[분석 보고서 2: 외면 활동성 분석 (사진 기반)]
+{photo_analysis}
 
-최종 답변은 반드시 사용자에게 직접 말하는 것처럼, 친절하고 따뜻한 말투의 추천 메시지 형식으로 작성해주세요.
-이제 모든 전문가의 분석 보고서가 준비되었습니다.
-더 이상 도구를 사용하지 말고, 위 지침에 따라 사용자에게 전달할 최종 추천 메시지를 작성하세요. 최종 답변은 반드시 사용자에게 직접 말하는 것처럼, 친절하고 따뜻한 말투의 추천 메시지 형식으로 작성해주세요.
+[작성 지침]
+1.  두 보고서를 종합하여 사용자의 성향을 입체적으로 파악하세요.
+2.  **[매우 중요]** 만약 두 보고서의 내용이 서로 상반될 경우(예: 설문은 '내향적', 사진은 '외향적'), 이 차이점을 반드시 언급하며 "내면의 성향과 달리 실제 생활에서는 활기찬 모습도 있으시네요!" 와 같이 긍정적으로 해석해주세요. 이런 경우, 두 가지 성향을 모두 만족시킬 수 있는 균형 잡힌 취미(예: 혼자서도 할 수 있지만 원한다면 그룹으로도 확장 가능한 활동)를 추천하는 것이 핵심입니다.
+3.  최종적으로 사용자에게 가장 적합한 취미 3가지를 추천하고, 각 취미를 추천하는 이유를 두 보고서의 내용을 근거로 들어 설득력 있게 설명해주세요.
+4.  답변은 반드시 사용자에게 직접 말하는 것처럼, 친절하고 따뜻한 말투의 추천 메시지 형식으로 작성해주세요.
 """
-hobby_prompt = ChatPromptTemplate.from_messages([("system", hobby_supervisor_prompt), MessagesPlaceholder(variable_name="messages")])
-hobby_supervisor_agent = create_react_agent(llm, hobby_tools, prompt=hobby_prompt)
+    final_prompt = ChatPromptTemplate.from_template(final_prompt_template)
+    final_chain = final_prompt | llm | StrOutputParser()
+    final_recommendation = final_chain.invoke({
+        "survey_summary": state["survey_summary"],
+        "photo_analysis": state["photo_analysis"]
+    })
+    logging.info("--- ✅ 최종 추천 메시지 생성이 완료되었습니다. ---")
+    return {"final_recommendation": final_recommendation}
 
+# 2-3. 취미 추천 StateGraph 컴파일
+hobby_graph_builder = StateGraph(HobbyAgentState)
+hobby_graph_builder.add_node("analyze_survey", analyze_survey_node)
+hobby_graph_builder.add_node("summarize_survey", summarize_survey_node)
+hobby_graph_builder.add_node("analyze_photo", analyze_photo_node)
+hobby_graph_builder.add_node("generate_final_recommendation", generate_final_recommendation_node)
+hobby_graph_builder.set_entry_point("analyze_survey")
+hobby_graph_builder.add_edge("analyze_survey", "summarize_survey")
+hobby_graph_builder.add_edge("summarize_survey", "analyze_photo")
+hobby_graph_builder.add_edge("analyze_photo", "generate_final_recommendation")
+hobby_graph_builder.add_edge("generate_final_recommendation", END)
+hobby_supervisor_agent = hobby_graph_builder.compile()
+
+# 2-4. 마스터 에이전트가 호출할 함수
 def call_multimodal_hobby_agent(state: MasterAgentState):
-    """'멀티모달 취미 추천 감독관(ReAct Agent)'을 호출하고 결과를 받아오는 노드"""
-    print("--- CALLING: Multimodal Hobby Supervisor Agent ---")
+    """'StateGraph 기반 취미 추천 에이전트'를 호출하고 결과를 받아오는 노드"""
+    logging.info("--- CALLING: StateGraph Hobby Supervisor Agent ---")
     
-    # [★핵심 수정★] main_V2.py의 성공적인 접근 방식을 적용합니다.
-    # 1. 사용자 입력에서 'survey'와 'image_paths'를 명확히 분리합니다.
     hobby_info = state["user_input"].get("hobby_info", state["user_input"])
     survey_data = hobby_info.get("survey", {})
     image_paths = hobby_info.get("image_paths", [])
 
-    # 2. 에이전트가 이해하기 쉬운 자연어 지시와 함께 구조화된 데이터를 전달합니다.
-    initial_prompt = f"이 사용자의 설문 결과와 사진들을 분석해서 맞춤형 취미를 추천해줘.\n\n- 설문 JSON: {json.dumps(survey_data, ensure_ascii=False)}\n- 사진 경로: {image_paths}"
-
-    input_data = {"messages": [("user", initial_prompt)]}
-
-    final_answer = ""
-    for event in hobby_supervisor_agent.stream(input_data, {"recursion_limit": 15}):
-        if "messages" in event:
-            last_message = event["messages"][-1]
-            if isinstance(last_message.content, str) and not last_message.tool_calls:
-                final_answer = last_message.content
+    input_data = {"survey_data": survey_data, "image_paths": image_paths}
+    
+    final_state = hobby_supervisor_agent.invoke(input_data, config={"recursion_limit": 10})
+    
+    final_answer = final_state.get("final_recommendation", "오류: 최종 추천을 생성하는 데 실패했습니다.")
                 
     return {"final_answer": final_answer}
 
