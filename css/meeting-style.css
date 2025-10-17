@@ -222,26 +222,58 @@ body {
     background-color: #0056b3;
 }
 
-.search-box, .filter-box {
-    background-color: #f9f9f9; /* 배경색 변경 */
+.search-box {
+    background-color: #f9f9f9;
     padding: 20px;
     border-radius: 8px;
-    box-shadow: none;
     border: 1px solid #f0f0f0;
 }
 
-.search-box h3, .filter-box h3 {
-    font-size: 1.2em; /* 폰트 크기 조정 */
+.search-box h3 {
+    font-size: 1.2em;
     color: #333;
     margin-top: 0;
     margin-bottom: 15px;
-    border-bottom: none;
-    padding-bottom: 0;
+}
+
+.search-input-wrapper {
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input-wrapper:focus-within {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
 #search-input {
-    background-color: #fff; /* 배경색 흰색 */
-    border: 1px solid #ddd;
+    border: none;
+    outline: none;
+    flex-grow: 1;
+    padding: 10px;
+    font-size: 1em;
+    background-color: transparent;
+}
+
+#search-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+}
+
+#search-button:hover {
+    background-color: #0056b3;
 }
 
 /* --- 신규 스타일: 마감 임박 위젯 --- */
