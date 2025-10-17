@@ -75,7 +75,7 @@ try {
                 <h2><?php echo htmlspecialchars($_SESSION['user_nickname']); ?> 님</h2>
                 <p>오늘도 새로운 취미를 찾아보세요!</p>
             </div>
-            <button class="edit-profile-btn">프로필 수정</button>
+            <a href="edit_profile_form.php" class="edit-profile-btn">프로필 수정</a>
         </div>
 
         <div class="meetings-container">
