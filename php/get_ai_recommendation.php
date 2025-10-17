@@ -28,20 +28,29 @@ try {
         }
     }
 
-    // 2. 이미지 파일 처리
-    $image_paths = [];
+    // 2. 이미지 파일 처리 및 URL 생성
+    $image_urls = [];
     if (isset($_FILES['hobby_photos'])) {
-        $upload_dir = '../uploads/hobby_photos/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0775, true);
+        // 파일 시스템 경로 설정
+        $upload_dir_fs = __DIR__ . '/../uploads/hobby_photos/';
+        if (!is_dir($upload_dir_fs)) {
+            mkdir($upload_dir_fs, 0775, true);
         }
+
+        // 웹 접근 가능 URL 설정
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+        $host = $_SERVER['HTTP_HOST'];
+        // 'php' 폴더 상위의 'uploads'를 가리키도록 URL 경로를 구성합니다.
+        $base_url = "$protocol://$host/uploads/hobby_photos/";
 
         foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
             if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
                 $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
-                $target_file = $upload_dir . $file_name;
-                if (move_uploaded_file($tmp_name, $target_file)) {
-                    $image_paths[] = realpath($target_file);
+                $target_file_fs = $upload_dir_fs . $file_name;
+                
+                if (move_uploaded_file($tmp_name, $target_file_fs)) {
+                    // AI 서버에는 웹 URL을 전달
+                    $image_urls[] = $base_url . $file_name;
                 }
             }
         }
@@ -51,7 +60,7 @@ try {
     $request_payload = [
         'user_input' => [
             'survey' => $survey_data,
-            'image_paths' => $image_paths
+            'image_urls' => $image_urls // 키를 'image_urls'로 변경하고 URL 배열을 전달
         ]
     ];
 
