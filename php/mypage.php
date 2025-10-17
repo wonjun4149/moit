@@ -146,7 +146,9 @@ try {
                                         <span><?php echo $meeting['current_members']; ?> / <?php echo $meeting['max_members']; ?>명</span>
                                         <span class="status-tag <?php echo $status_class; ?>"><?php echo $status_text; ?></span>
                                         <button class="btn-details" data-meeting='<?php echo json_encode($meeting); ?>'>상세보기</button>
-                                        <button class="btn-cancel" data-meeting-id="<?php echo $meeting['id']; ?>">신청 취소</button>
+                                        <?php if (!$is_past): ?>
+                                            <button class="btn-cancel" data-meeting-id="<?php echo $meeting['id']; ?>">신청 취소</button>
+                                        <?php endif; ?>
                                     </div>
                                 </li>
                             <?php endforeach; ?>

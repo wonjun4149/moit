@@ -26,6 +26,19 @@ if (!$meeting_id) {
 try {
     $pdo = getDBConnection();
 
+    // Check if the meeting is in the past
+    $stmt_check_date = $pdo->prepare("SELECT meeting_date, meeting_time FROM meetings WHERE id = ?");
+    $stmt_check_date->execute([$meeting_id]);
+    $meeting = $stmt_check_date->fetch();
+
+    if ($meeting) {
+        $is_past = strtotime($meeting['meeting_date'] . ' ' . $meeting['meeting_time']) < time();
+        if ($is_past) {
+            echo json_encode(['success' => false, 'message' => '이미 종료된 모임은 취소할 수 없습니다.']);
+            exit;
+        }
+    }
+
     // meeting_participants 테이블에서 해당 사용자의 참여 기록 삭제
     $stmt = $pdo->prepare("DELETE FROM meeting_participants WHERE meeting_id = ? AND user_id = ?");
     $stmt->execute([$meeting_id, $user_id]);
