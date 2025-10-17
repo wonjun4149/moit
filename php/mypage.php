@@ -22,6 +22,7 @@ try {
     $stmt_user = $pdo->prepare("SELECT nickname, profile_image_path FROM users WHERE id = ?");
     $stmt_user->execute([$user_id]);
     $user = $stmt_user->fetch(PDO::FETCH_ASSOC);
+    error_log('User profile image path from DB: ' . ($user['profile_image_path'] ?? 'not set'));
 
     // 1. 내가 만든 모임 목록 조회
     $stmt_created = $pdo->prepare("
