@@ -32,35 +32,63 @@ try {
     $image_paths = [];
     if (isset($_FILES['hobby_photos'])) {
         // [수정] 상대 경로 대신 __DIR__을 사용한 절대 경로로 변경하여 안정성 확보
-        $upload_dir = __DIR__ . '/../uploads/hobby_photos/';
-        error_log("[AI_HOBBY_DEBUG] Attempting to use upload directory: " . $upload_dir);
+        $upload_dir = realpath(__DIR__ . '/../uploads') . '/hobby_photos/';
+        error_log("[AI_HOBBY_DEBUG] 1. Target upload directory: " . $upload_dir);
 
         if (!is_dir($upload_dir)) {
+            error_log("[AI_HOBBY_DEBUG] 2. Directory does not exist. Attempting to create...");
             // mkdir의 세 번째 파라미터 'true'는 재귀적으로 폴더를 생성합니다.
             if (!mkdir($upload_dir, 0775, true)) {
                 // 폴더 생성 실패 시 즉시 에러를 던집니다.
                 throw new Exception("Failed to create upload directory. Check permissions for parent directory: " . dirname($upload_dir));
             }
-            error_log("[AI_HOBBY_DEBUG] Upload directory created: " . $upload_dir);
+            error_log("[AI_HOBBY_DEBUG] 3. Upload directory created: " . $upload_dir);
         }
 
         // [추가] 폴더 쓰기 권한 확인
         if (!is_writable($upload_dir)) {
             $error_message = "Upload directory is not writable. Please check permissions for: " . $upload_dir;
-            error_log("[AI_HOBBY_DEBUG] " . $error_message);
+            error_log("[AI_HOBBY_DEBUG] 4. " . $error_message);
             throw new Exception($error_message);
         }
+        error_log("[AI_HOBBY_DEBUG] 4. Upload directory is writable.");
 
         foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
-            if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
+            $upload_error = $_FILES['hobby_photos']['error'][$key];
+            error_log("[AI_HOBBY_DEBUG] 5. Processing file key {$key}. Upload status: {$upload_error}");
+
+            if ($upload_error === UPLOAD_ERR_OK) {
                 $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
                 $target_file = $upload_dir . $file_name;
+                error_log("[AI_HOBBY_DEBUG] 6. Attempting to move '{$tmp_name}' to '{$target_file}'");
+
                 if (@move_uploaded_file($tmp_name, $target_file)) { // @ 연산자로 기본 경고를 숨기고 직접 에러를 처리합니다.
                     $image_paths[] = realpath($target_file);
-                    error_log("[AI_HOBBY_DEBUG] SUCCESS: File moved to " . $target_file);
+                    error_log("[AI_HOBBY_DEBUG] 7. SUCCESS: File moved to " . $target_file);
                 } else {
-                    error_log("[AI_HOBBY_DEBUG] FAILURE: Could not move uploaded file to " . $target_file . ". Check file upload settings or directory permissions.");
+                    error_log("[AI_HOBBY_DEBUG] 7. FAILURE: Could not move uploaded file to " . $target_file . ". Check file upload settings or directory permissions.");
                 }
+            } else {
+                // [수정] 업로드 에러 코드를 분석하여 더 상세한 로그를 남깁니다.
+                $error_message = "Unknown upload error.";
+                switch ($upload_error) {
+                    case UPLOAD_ERR_INI_SIZE:
+                        $error_message = "The uploaded file exceeds the upload_max_filesize directive in php.ini.";
+                        break;
+                    case UPLOAD_ERR_FORM_SIZE:
+                        $error_message = "The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form.";
+                        break;
+                    case UPLOAD_ERR_PARTIAL:
+                        $error_message = "The uploaded file was only partially uploaded.";
+                        break;
+                    case UPLOAD_ERR_NO_FILE:
+                        $error_message = "No file was uploaded.";
+                        break;
+                    case UPLOAD_ERR_NO_TMP_DIR:
+                        $error_message = "Missing a temporary folder.";
+                        break;
+                }
+                error_log("[AI_HOBBY_DEBUG] File upload error for key {$key}. Code: {$upload_error} - {$error_message}");
             }
         }
     }
