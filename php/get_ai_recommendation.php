@@ -31,7 +31,8 @@ try {
     // 2. 이미지 파일 처리
     $image_paths = [];
     if (isset($_FILES['hobby_photos'])) {
-        $upload_dir = '../uploads/hobby_photos/';
+        // [수정] 상대 경로 대신 __DIR__을 사용한 절대 경로로 변경하여 안정성 확보
+        $upload_dir = __DIR__ . '/../uploads/hobby_photos/';
         if (!is_dir($upload_dir)) {
             mkdir($upload_dir, 0775, true);
         }

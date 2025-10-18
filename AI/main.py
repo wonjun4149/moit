@@ -68,14 +68,14 @@ class MasterAgentState(TypedDict):
 router_prompt = ChatPromptTemplate.from_template(
     """당신은 사용자의 요청을 분석하여 어떤 담당자에게 전달해야 할지 결정하는 AI 라우터입니다.
     사용자의 요청을 보고, 아래 두 가지 경로 중 가장 적절한 경로 하나만 골라 그 이름만 정확히 답변해주세요.
-
+ 
     [경로 설명]
-    1. `meeting_matching`: 사용자가 '새로운 모임'을 만들려고 할 때, 기존에 있던 '유사한 모임'을 추천해주는 경로입니다. (입력에 title, description 등이 포함됩니다)
-    2. `hobby_recommendation`: 사용자에게 '새로운 취미' 자체를 추천해주는 경로입니다. (입력에 survey, user_context 등이 포함됩니다)
+    - `meeting_matching`: 사용자가 '새로운 모임'을 만들려고 할 때, 기존에 있던 '유사한 모임'을 추천해주는 경로입니다. 입력에 'title', 'description' 키가 포함되어 있으면 이 경로일 확률이 높습니다.
+    - `hobby_recommendation`: 사용자에게 '새로운 취미' 자체를 추천해주는 경로입니다. 입력에 'survey' 키가 포함되어 있으면 이 경로일 확률이 매우 높습니다.
  
     [사용자 요청]:
     {user_input}
-
+ 
     [판단 결과 (meeting_matching 또는 hobby_recommendation)]:
     """
 )
@@ -84,16 +84,9 @@ router_chain = router_prompt | llm | StrOutputParser()
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
     logging.info("--- ROUTING ---")
-    user_input_raw = state['user_input']
-    # create_meeting.php와 hobby_recommendation.php의 다양한 입력 형식을 모두 처리
-    if "messages" in user_input_raw and isinstance(user_input_raw.get("messages"), list) and user_input_raw["messages"]:
-        content = user_input_raw["messages"][0][1] if len(user_input_raw["messages"][0]) > 1 else {}
-        actual_input = content if isinstance(content, dict) else user_input_raw
-    else:
-        actual_input = user_input_raw
-
-    logging.info(f"라우팅을 위한 실제 입력: {actual_input}")
-    route_decision = router_chain.invoke({"user_input": actual_input})
+    # [수정] 복잡한 입력 처리 로직을 모두 제거하고, 원본 입력을 그대로 사용합니다.
+    logging.info(f"라우팅을 위한 실제 입력: {state['user_input']}")
+    route_decision = router_chain.invoke({"user_input": state['user_input']})
     cleaned_decision = route_decision.strip().lower().replace("'", "").replace('"', '')
     logging.info(f"라우팅 결정: {cleaned_decision}")
     return {"route": cleaned_decision}
@@ -244,14 +237,8 @@ def call_meeting_matching_agent(state: MasterAgentState):
     graph_builder.add_edge("rewrite_query", "retrieve")
     meeting_agent = graph_builder.compile()
 
-    # [수정] 라우터와 동일한 로직으로 실제 입력 데이터를 추출합니다.
-    user_input_raw = state['user_input']
-    if "messages" in user_input_raw and isinstance(user_input_raw.get("messages"), list) and user_input_raw["messages"]:
-        content = user_input_raw["messages"][0][1] if len(user_input_raw["messages"][0]) > 1 else {}
-        user_input = content if isinstance(content, dict) else user_input_raw
-    else:
-        user_input = user_input_raw
-
+    # [수정] 복잡한 입력 처리 로직을 제거하고, 원본 입력을 그대로 사용합니다.
+    user_input = state['user_input']
     initial_state = {
         "title": user_input.get("title", ""),
         "description": user_input.get("description", ""),
