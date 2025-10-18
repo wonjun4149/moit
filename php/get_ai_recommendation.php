@@ -38,8 +38,8 @@ try {
     }
     error_log("Parsed survey data: " . json_encode($survey_data));
 
-    // 2. 이미지 파일 처리 및 URL 생성
-    $image_urls = [];
+    // 2. 이미지 파일 처리 및 서버 로컬 경로 생성
+    $image_paths = [];
     if (isset($_FILES['hobby_photos'])) {
         // =================[ DEBUG START ]=================
         error_log("hobby_photos file upload detected.");
@@ -63,12 +63,6 @@ try {
         error_log("Upload directory is writable.");
         // =================[ DEBUG END ]===================
 
-        // 웹 접근 가능 URL 설정
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-        $host = $_SERVER['HTTP_HOST'];
-        $base_url = "$protocol://$host/uploads/hobby_photos/";
-        error_log("Base URL for images: " . $base_url);
-
         foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
             $upload_error = $_FILES['hobby_photos']['error'][$key];
             if ($upload_error === UPLOAD_ERR_OK) {
@@ -77,9 +71,9 @@ try {
                 
                 error_log("Attempting to move file '{$tmp_name}' to '{$target_file_fs}'");
                 if (move_uploaded_file($tmp_name, $target_file_fs)) {
-                    $image_url = $base_url . $file_name;
-                    $image_urls[] = $image_url;
-                    error_log("File moved successfully. URL: " . $image_url);
+                    // 웹 URL 대신 서버의 절대 파일 경로를 배열에 추가
+                    $image_paths[] = $target_file_fs;
+                    error_log("File moved successfully. Path: " . $target_file_fs);
                 } else {
                     error_log("move_uploaded_file FAILED for '{$tmp_name}'.");
                 }
@@ -108,7 +102,7 @@ try {
     $request_payload = [
         'user_input' => [
             'survey' => $survey_data,
-            'image_urls' => $image_urls
+            'image_paths' => $image_paths // 키를 'image_paths'로 변경하여 전송
         ]
     ];
     error_log("Payload to AI server: " . json_encode($request_payload));
