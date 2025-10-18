@@ -278,21 +278,19 @@ def call_meeting_matching_agent(state: MasterAgentState):
 
 # 2-1. 취미 추천에 사용될 도구(Tool) 정의
 @tool
-def analyze_photo_tool(image_base64s: list[str]) -> str:
-    """사용자의 사진(Base64로 인코딩된 문자열 리스트)을 입력받아, 그 사람의 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다."""
+def analyze_photo_tool(image_paths: list[str]) -> str:
+    """사용자의 사진(이미지 파일 경로 리스트)을 입력받아, 그 사람의 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다."""
     from PIL import Image
-    import io
-    import base64 # base64 라이브러리 추가
 
-    if not image_base64s:
+    if not image_paths:
         logging.info("--- 🖼️ 분석할 사진이 없어 사진 분석 단계를 건너뜁니다. ---")
         return "사용자가 제공한 사진이 없습니다."
     try:
-        logging.info(f"--- 📸 '사진 분석 전문가'가 작업을 시작합니다. (이미지 {len(image_base64s)}개) ---")
+        logging.info(f"--- 📸 '사진 분석 전문가'가 작업을 시작합니다. (이미지 {len(image_paths)}개) ---")
         model = genai.GenerativeModel('gemini-pro-vision') # 멀티모달 모델 이름 확인 (gemini-pro-vision 또는 gemini-1.5-flash 등)
         photo_analysis_prompt_text = "당신은 사람들의 일상 사진을 보고, 그 사람의 잠재적인 관심사와 성향을 추측하는 심리 분석가입니다. [분석할 사진] 아래 제공된 사진들 [지시사항] 1. 사진들 속 인물, 사물, 배경, 분위기를 종합적으로 분석하세요. 2. 사진 분석 결과를 바탕으로, 이 사람의 성향과 잠재적인 관심사를 3~4개의 핵심 키워드와 함께 설명해주세요. 3. 최종 결과는 다른 AI가 이해하기 쉽도록 간결한 분석 보고서 형식으로 작성해주세요."
-        # Base64 문자열을 디코딩하여 이미지 데이터로 변환
-        image_parts = [Image.open(io.BytesIO(base64.b64decode(b64_string))) for b64_string in image_base64s]
+        # 로컬 파일 경로에서 이미지를 직접 엽니다.
+        image_parts = [Image.open(path) for path in image_paths]
         response = model.generate_content([photo_analysis_prompt_text] + image_parts)
         logging.info("--- ✅ 사진 분석이 성공적으로 완료되었습니다. ---")
         return response.text
@@ -378,7 +376,7 @@ def summarize_survey_node(state: HobbyAgentState):
 
 def analyze_photo_node(state: HobbyAgentState):
     """사진을 분석하는 노드"""
-    photo_analysis = analyze_photo_tool.invoke({"image_paths": state.get("image_paths", [])})
+    photo_analysis = analyze_photo_tool.invoke({"image_base64s": state.get("image_base64s", [])})
     return {"photo_analysis": photo_analysis}
 
 def generate_final_recommendation_node(state: HobbyAgentState):
@@ -428,9 +426,9 @@ def call_multimodal_hobby_agent(state: MasterAgentState):
 
     user_input = state["user_input"]
     survey_data = user_input.get("survey", {})
-    image_base64s = user_input.get("image_base64s", []) # image_urls -> image_base64s
+    image_paths = user_input.get("image_paths", []) # PHP에서 보낸 'image_paths' 키를 사용
 
-    input_data = {"survey_data": survey_data, "image_base64s": image_base64s}
+    input_data = {"survey_data": survey_data, "image_paths": image_paths}
     
     final_state = hobby_supervisor_agent.invoke(input_data, config={"recursion_limit": 10})
     
