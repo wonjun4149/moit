@@ -59,113 +59,6 @@ try {
     $error_message = '데이터를 불러오는 중 오류가 발생했습니다.';
 }
 
-// 설문 제출 처리 - AI 에이전트 연동
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
-    debug_output("=== AI 에이전트 기반 추천 시작 ===");
-    
-    try {
-        // 1. 설문 데이터 수집
-        $survey_data = [];
-        foreach ($_POST as $key => $value) {
-            if (strpos($key, 'Q') === 0) {
-                // Q10과 같은 체크박스는 배열로 들어오므로 그대로 유지
-                $q_num = intval(substr($key, 1));
-                if (is_array($value)) {
-                    $survey_data[$q_num] = $value;
-                } else {
-                    // 라디오/likert 값은 숫자 값으로 변환
-                    $survey_data[$q_num] = intval($value);
-                }
-            }
-        }
-        debug_output("정리된 설문 데이터", $survey_data);
-
-        // 2. 이미지 파일 처리
-        $image_paths = [];
-        if (isset($_FILES['hobby_photos'])) {
-            $upload_dir = '../uploads/hobby_photos/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0775, true);
-            }
-
-            foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
-                if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
-                    $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
-                    $target_file = $upload_dir . $file_name;
-                    if (move_uploaded_file($tmp_name, $target_file)) {
-                        // AI 서버가 접근할 수 있는 절대 경로로 변환
-                        $image_paths[] = realpath($target_file);
-                    }
-                }
-            }
-        }
-        debug_output("업로드된 이미지 경로", $image_paths);
-
-        // 3. AI 에이전트에 보낼 데이터 구조 생성
-        $request_payload = [
-            'user_input' => [
-                'survey' => $survey_data, 
-                'image_paths' => $image_paths
-            ]
-        ];
-        debug_output("AI 서버 요청 데이터", $request_payload);
-
-        // 4. cURL을 사용해 AI 에이전트 API 호출
-        $ch = curl_init('http://127.0.0.1:8000/agent/invoke');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($request_payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen(json_encode($request_payload))
-        ]);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // 연결 타임아웃 5초
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);      // 이미지 분석을 위해 타임아웃 60초로 연장
-
-        $response_body = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        if (curl_errno($ch) || $http_code !== 200) {
-            $curl_error = curl_error($ch);
-            debug_output("cURL Error", ['message' => $curl_error, 'http_code' => $http_code, 'body' => $response_body]);
-            throw new Exception("AI 추천 서버와의 통신에 실패했습니다. (HTTP: {$http_code})");
-        }
-        curl_close($ch);
-
-        debug_output("AI 서버 응답", json_decode($response_body, true));
-
-        // 5. AI 추천 결과 파싱 및 변환
-        $response_data = json_decode($response_body, true);
-        if (isset($response_data['final_answer']) && !empty($response_data['final_answer'])) {
-            // AI 응답이 추천 메시지 전체이므로 그대로 사용
-            $recommendations = $response_data['final_answer'];
-
-            // AI 추천 결과를 데이터베이스에 저장
-            try {
-                debug_output("AI 추천 결과 DB 저장 시도");
-                $stmt = $pdo->prepare("
-                    INSERT INTO ai_hobby_recommendations (user_id, recommendation_text) 
-                    VALUES (?, ?)
-                ");
-                $stmt->execute([$_SESSION['user_id'], $recommendations]);
-                debug_output("AI 추천 결과 DB 저장 성공");
-            } catch (PDOException $e) {
-                debug_output("AI 추천 결과 DB 저장 실패", $e->getMessage());
-            }
-        }
-
-        if (empty($recommendations)) {
-             $error_message = "AI가 추천을 생성하지 못했거나, 응답을 처리하는 데 실패했습니다. AI 서버 로그를 확인해주세요.";
-             debug_output("추천 결과 파싱 실패 또는 빈 결과", $response_data);
-        }
-
-    } catch (Exception $e) {
-        debug_output("예외 발생", ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-        $error_message = '추천을 생성하는 중 오류가 발생했습니다: ' . $e->getMessage();
-    }
-    debug_output("=== AI 추천 처리 완료 ===");
-}
-
 debug_output("최종 상태", [
     'recommendations_count' => count($recommendations),
     'error_message' => $error_message,
@@ -188,8 +81,7 @@ debug_output("최종 상태", [
             <h3>🐛 디버그 모드 활성화</h3>
             <p><strong>현재 상태:</strong></p>
             <ul>
-                <li>POST 요청: <?php echo ($_SERVER['REQUEST_METHOD'] == 'POST') ? '✅' : '❌'; ?></li>
-                <li>설문 제출: <?php echo isset($_POST['submit_survey']) ? '✅' : '❌'; ?></li>
+                <li>페이지 로드 방식: <?php echo $_SERVER['REQUEST_METHOD']; ?></li>
                 <li>추천 결과: <?php echo count($recommendations); ?>개</li>
                 <li>에러: <?php echo $error_message ?: '없음'; ?></li>
             </ul>
@@ -368,7 +260,7 @@ debug_output("최종 상태", [
                         <div class="survey-buttons">
                             <button type="button" class="btn-prev" id="prevBtn" style="display: none;">이전</button>
                             <button type="button" class="btn-next" id="nextBtn">다음</button>
-                            <button type="submit" name="submit_survey" class="submit-btn" id="submitBtn" style="display: none;">취미 추천받기</button>
+                            <button type="submit" class="submit-btn" id="submitBtn" style="display: none;">취미 추천받기</button>
                         </div>
                     </form>
                 </div>

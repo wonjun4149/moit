@@ -84,14 +84,15 @@ router_chain = router_prompt | llm | StrOutputParser()
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
     logging.info("--- ROUTING ---")
-    user_input = state['user_input']
-    # PHP에서 오는 형식은 'survey' 키를 포함하고, 모임 매칭은 'title' 키를 포함합니다.
-    if 'survey' in user_input:
-        actual_input = user_input
+    user_input_raw = state['user_input']
+    # create_meeting.php와 hobby_recommendation.php의 다양한 입력 형식을 모두 처리
+    if "messages" in user_input_raw and isinstance(user_input_raw.get("messages"), list) and user_input_raw["messages"]:
+        content = user_input_raw["messages"][0][1] if len(user_input_raw["messages"][0]) > 1 else {}
+        actual_input = content if isinstance(content, dict) else user_input_raw
     else:
-        # 다른 형식의 입력(예: LangChain Playground)을 위한 호환성 로직
-        actual_input = user_input
+        actual_input = user_input_raw
 
+    logging.info(f"라우팅을 위한 실제 입력: {actual_input}")
     route_decision = router_chain.invoke({"user_input": actual_input})
     cleaned_decision = route_decision.strip().lower().replace("'", "").replace('"', '')
     logging.info(f"라우팅 결정: {cleaned_decision}")
@@ -143,7 +144,7 @@ def call_meeting_matching_agent(state: MasterAgentState):
 
     generate_prompt = ChatPromptTemplate.from_template(
         """당신은 사용자의 요청을 매우 엄격하게 분석하여 유사한 모임을 추천하는 MOIT 플랫폼의 AI입니다.
-        사용자가 만들려는 모임과 **주제, 활동 내용이 유사한** 기존 모임만 추천해야 합니다.
+        사용자가 만들려는 모임과 **주제, 활동 내용이 명확하게 일치하는** 기존 모임만 추천해야 합니다.
 
         [사용자 입력 정보]:
         {query}
@@ -251,7 +252,6 @@ def call_meeting_matching_agent(state: MasterAgentState):
     else:
         user_input = user_input_raw
 
-
     initial_state = {
         "title": user_input.get("title", ""),
         "description": user_input.get("description", ""),
@@ -278,20 +278,18 @@ def call_meeting_matching_agent(state: MasterAgentState):
 
 # 2-1. 취미 추천에 사용될 도구(Tool) 정의
 @tool
-def analyze_photo_tool(image_urls: list[str]) -> str:
-    """사용자의 사진 URL 리스트를 입력받아, 그 사람의 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다."""
+def analyze_photo_tool(image_paths: list[str]) -> str:
+    """사용자의 사진(이미지 파일 경로 리스트)을 입력받아, 그 사람의 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다."""
     from PIL import Image
-    import io
-    import requests # requests 라이브러리 추가
 
-    if not image_urls:
+    if not image_paths:
         logging.info("--- 🖼️ 분석할 사진이 없어 사진 분석 단계를 건너뜁니다. ---")
         return "사용자가 제공한 사진이 없습니다."
     try:
-        logging.info(f"--- 📸 '사진 분석 전문가'가 작업을 시작합니다. (이미지 {len(image_urls)}개) ---")
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        logging.info(f"--- 📸 '사진 분석 전문가'가 작업을 시작합니다. (이미지 {len(image_paths)}개) ---")
+        model = genai.GenerativeModel('gemini-pro-vision')
         photo_analysis_prompt_text = "당신은 사람들의 일상 사진을 보고, 그 사람의 잠재적인 관심사와 성향을 추측하는 심리 분석가입니다. [분석할 사진] 아래 제공된 사진들 [지시사항] 1. 사진들 속 인물, 사물, 배경, 분위기를 종합적으로 분석하세요. 2. 사진 분석 결과를 바탕으로, 이 사람의 성향과 잠재적인 관심사를 3~4개의 핵심 키워드와 함께 설명해주세요. 3. 최종 결과는 다른 AI가 이해하기 쉽도록 간결한 분석 보고서 형식으로 작성해주세요."
-        image_parts = [Image.open(io.BytesIO(requests.get(url).content)) for url in image_urls]
+        image_parts = [Image.open(path) for path in image_paths]
         response = model.generate_content([photo_analysis_prompt_text] + image_parts)
         logging.info("--- ✅ 사진 분석이 성공적으로 완료되었습니다. ---")
         return response.text
@@ -358,7 +356,7 @@ def summarize_survey_profile_tool(survey_profile: dict) -> str:
 # 2-2. 취미 추천 StateGraph 정의
 class HobbyAgentState(TypedDict):
     survey_data: dict
-    image_urls: List[str]
+    image_paths: List[str]
     survey_profile: dict
     survey_summary: str
     photo_analysis: str
@@ -377,7 +375,7 @@ def summarize_survey_node(state: HobbyAgentState):
 
 def analyze_photo_node(state: HobbyAgentState):
     """사진을 분석하는 노드"""
-    photo_analysis = analyze_photo_tool.invoke({"image_urls": state.get("image_urls", [])})
+    photo_analysis = analyze_photo_tool.invoke({"image_paths": state.get("image_paths", [])})
     return {"photo_analysis": photo_analysis}
 
 def generate_final_recommendation_node(state: HobbyAgentState):
@@ -427,9 +425,9 @@ def call_multimodal_hobby_agent(state: MasterAgentState):
 
     user_input = state["user_input"]
     survey_data = user_input.get("survey", {})
-    image_urls = user_input.get("image_urls", [])
+    image_paths = user_input.get("image_paths", [])
 
-    input_data = {"survey_data": survey_data, "image_urls": image_urls}
+    input_data = {"survey_data": survey_data, "image_paths": image_paths}
     
     final_state = hobby_supervisor_agent.invoke(input_data, config={"recursion_limit": 10})
     
