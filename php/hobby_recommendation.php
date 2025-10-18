@@ -43,7 +43,8 @@ try {
     debug_output("데이터베이스 연결 성공");
     
     // 인기 취미 가져오기
-    $stmt = $pdo->query("\n        SELECT h.*, COUNT(hr.hobby_id) as recommendation_count
+    $stmt = $pdo->query("
+        SELECT h.*, COUNT(hr.hobby_id) as recommendation_count
         FROM hobbies h
         LEFT JOIN hobby_recommendations hr ON h.id = hr.hobby_id
         GROUP BY h.id
@@ -79,35 +80,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
         }
         debug_output("정리된 설문 데이터", $survey_data);
 
-        // 2. 이미지 파일 처리 및 URL 생성
-        $image_urls = [];
+        // 2. 이미지 파일 처리
+        $image_paths = [];
         if (isset($_FILES['hobby_photos'])) {
-            $upload_dir_fs = __DIR__ . '/../uploads/hobby_photos/';
-            if (!is_dir($upload_dir_fs)) {
-                mkdir($upload_dir_fs, 0775, true);
+            $upload_dir = '../uploads/hobby_photos/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0775, true);
             }
-
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-            $host = $_SERVER['HTTP_HOST'];
-            $base_url = "$protocol://$host/uploads/hobby_photos/";
 
             foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
                 if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
                     $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
-                    $target_file_fs = $upload_dir_fs . $file_name;
-                    if (move_uploaded_file($tmp_name, $target_file_fs)) {
-                        $image_urls[] = $base_url . $file_name;
+                    $target_file = $upload_dir . $file_name;
+                    if (move_uploaded_file($tmp_name, $target_file)) {
+                        // AI 서버가 접근할 수 있는 절대 경로로 변환
+                        $image_paths[] = realpath($target_file);
                     }
                 }
             }
         }
-        debug_output("생성된 이미지 URL", $image_urls);
+        debug_output("업로드된 이미지 경로", $image_paths);
 
         // 3. AI 에이전트에 보낼 데이터 구조 생성
         $request_payload = [
             'user_input' => [
                 'survey' => $survey_data, 
-                'image_urls' => $image_urls // 키를 image_urls로 수정
+                'image_paths' => $image_paths
             ]
         ];
         debug_output("AI 서버 요청 데이터", $request_payload);
@@ -145,7 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_survey'])) {
             // AI 추천 결과를 데이터베이스에 저장
             try {
                 debug_output("AI 추천 결과 DB 저장 시도");
-                $stmt = $pdo->prepare("\n                    INSERT INTO ai_hobby_recommendations (user_id, recommendation_text) 
+                $stmt = $pdo->prepare("
+                    INSERT INTO ai_hobby_recommendations (user_id, recommendation_text) 
                     VALUES (?, ?)
                 ");
                 $stmt->execute([$_SESSION['user_id'], $recommendations]);
@@ -263,8 +262,7 @@ debug_output("최종 상태", [
                             ];
                             $stage3_questions = [
                                 ['name' => 'Q31', 'label' => '31. 새로운 활동을 통해 당신이 가장 얻고 싶은 것은 무엇인가요? (가장 중요한 것 1개 선택)', 'type' => 'radio', 'options' => ['성취: 새로운 기술을 배우고 실력이 느는 것을 확인하는 것', '회복: 복잡한 생각에서 벗어나 편안하게 재충전하는 것', '연결: 좋은 사람들과 교류하며 소속감을 느끼는 것', '활력: 몸을 움직여 건강해지고 에너지를 얻는 것']],
-                                ['name' => 'Q32', 'label' => '32. 다음 문장들 중, 현재 당신의 마음에 가장 와닿는 것은 무엇인가요?', 'type' => 'radio', 'options' => ['"무언가에 깊이 몰입해서 시간 가는 줄 모르는 경험을 하고 싶다."', '"결과물에 상관없이 과정 자체를 즐기고 싶다."', '"나도 누군가에게 도움이 되는 가치 있는 일을 하고 싶다."', '"그저 즐겁게 웃을 수 있는 시간이 필요하다."
-                                ']],
+                                ['name' => 'Q32', 'label' => '32. 다음 문장들 중, 현재 당신의 마음에 가장 와닿는 것은 무엇인가요?', 'type' => 'radio', 'options' => ['"무언가에 깊이 몰입해서 시간 가는 줄 모르는 경험을 하고 싶다."', '"결과물에 상관없이 과정 자체를 즐기고 싶다."', '"나도 누군가에게 도움이 되는 가치 있는 일을 하고 싶다."', '"그저 즐겁게 웃을 수 있는 시간이 필요하다."']],
                                 ['name' => 'Q33', 'label' => '33. 새로운 지식이나 기술을 배우는 것', 'type' => 'likert', 'labels' => ['전혀 중요하지 않음', '매우 중요함']],
                                 ['name' => 'Q34', 'label' => '34. 마음의 평화와 안정을 얻는 것', 'type' => 'likert', 'labels' => ['전혀 중요하지 않음', '매우 중요함']],
                                 ['name' => 'Q35', 'label' => '35. 다른 사람들과 유대감을 형성하는 것', 'type' => 'likert', 'labels' => ['전혀 중요하지 않음', '매우 중요함']],
