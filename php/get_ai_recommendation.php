@@ -33,16 +33,26 @@ try {
     if (isset($_FILES['hobby_photos'])) {
         // [수정] 상대 경로 대신 __DIR__을 사용한 절대 경로로 변경하여 안정성 확보
         $upload_dir = __DIR__ . '/../uploads/hobby_photos/';
+        error_log("Attempting to use upload directory: " . $upload_dir);
+
         if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0775, true);
+            // mkdir의 세 번째 파라미터 'true'는 재귀적으로 폴더를 생성합니다.
+            if (!mkdir($upload_dir, 0775, true)) {
+                // 폴더 생성 실패 시 즉시 에러를 던집니다.
+                throw new Exception("Failed to create upload directory. Check permissions for: " . dirname($upload_dir));
+            }
+            error_log("Upload directory created: " . $upload_dir);
         }
 
         foreach ($_FILES['hobby_photos']['tmp_name'] as $key => $tmp_name) {
             if ($_FILES['hobby_photos']['error'][$key] === UPLOAD_ERR_OK) {
                 $file_name = uniqid() . '-' . basename($_FILES['hobby_photos']['name'][$key]);
                 $target_file = $upload_dir . $file_name;
-                if (move_uploaded_file($tmp_name, $target_file)) {
+                if (@move_uploaded_file($tmp_name, $target_file)) { // @ 연산자로 기본 경고를 숨기고 직접 에러를 처리합니다.
                     $image_paths[] = realpath($target_file);
+                    error_log("SUCCESS: File moved to " . $target_file);
+                } else {
+                    error_log("FAILURE: Could not move uploaded file to " . $target_file . ". Check directory permissions.");
                 }
             }
         }

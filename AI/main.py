@@ -84,8 +84,7 @@ router_chain = router_prompt | llm | StrOutputParser()
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
     logging.info("--- ROUTING ---")
-    # [수정] 복잡한 입력 처리 로직을 모두 제거하고, 원본 입력을 그대로 사용합니다.
-    logging.info(f"라우팅을 위한 실제 입력: {state['user_input']}")
+    # [수정] 불필요한 로그 라인을 제거합니다.
     route_decision = router_chain.invoke({"user_input": state['user_input']})
     cleaned_decision = route_decision.strip().lower().replace("'", "").replace('"', '')
     logging.info(f"라우팅 결정: {cleaned_decision}")
@@ -237,8 +236,8 @@ def call_meeting_matching_agent(state: MasterAgentState):
     graph_builder.add_edge("rewrite_query", "retrieve")
     meeting_agent = graph_builder.compile()
 
-    # [수정] 복잡한 입력 처리 로직을 제거하고, 원본 입력을 그대로 사용합니다.
-    user_input = state['user_input']
+    # create_meeting.php에서 오는 데이터 형식에 맞게 실제 데이터를 추출합니다.
+    user_input = state['user_input'].get('messages', [[]])[0][1] if 'messages' in state['user_input'] else state['user_input']
     initial_state = {
         "title": user_input.get("title", ""),
         "description": user_input.get("description", ""),
