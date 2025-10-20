@@ -39,6 +39,22 @@ try {
     debug_output("데이터베이스 연결 시도");
     $pdo = getDBConnection();
     debug_output("데이터베이스 연결 성공");
+
+    // MOIT 통계 데이터 가져오기
+    // 1. 총 모임 수
+    $stmt_total_meetings = $pdo->query("SELECT COUNT(*) as total_meetings FROM meetings");
+    $total_meetings = $stmt_total_meetings->fetchColumn();
+
+    // 2. 가장 인기있는 카테고리
+    $stmt_popular_category = $pdo->query("SELECT category FROM meetings GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1");
+    $popular_category = $stmt_popular_category->fetchColumn();
+    if (!$popular_category) {
+        $popular_category = '아직 없음';
+    }
+
+    // 3. 이번 주 새 멤버
+    $stmt_new_members = $pdo->query("SELECT COUNT(*) FROM users WHERE YEARWEEK(created_at, 1) = YEARWEEK(NOW(), 1)");
+    $new_members_this_week = $stmt_new_members->fetchColumn();
     
 } catch (PDOException $e) {
     debug_output("데이터베이스 에러", $e->getMessage());
@@ -266,7 +282,22 @@ debug_output("최종 상태", [
                         </div>
                     </div>
                 <?php else: ?>
-                    <!-- AI 추천 결과가 없을 경우 (기본 상태) -->
+                    <!-- MOIT 통계 -->
+                    <div class="moit-stats">
+                        <h3>MOIT 통계</h3>
+                        <div class="stat-item">
+                            <strong>총 모임수</strong>
+                            <span><?php echo $total_meetings; ?></span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>가장 인기있는 카테고리</strong>
+                            <span><?php echo htmlspecialchars($popular_category); ?></span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>이번 주 새 멤버</strong>
+                            <span><?php echo $new_members_this_week; ?></span>
+                        </div>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

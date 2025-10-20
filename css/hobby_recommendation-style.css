@@ -324,3 +324,42 @@ body {
     .likert-radio-button { width: 24px; height: 24px; }
     .likert-number { font-size: 12px; }
 }
+
+/* MOIT 통계 섹션 */
+.moit-stats {
+    background-color: #f8f9fa;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+}
+
+.moit-stats h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.stat-item {
+    margin-bottom: 15px;
+}
+
+.stat-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-item strong {
+    display: block;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat-item span {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
