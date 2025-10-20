@@ -23,6 +23,8 @@ from langgraph.prebuilt import create_react_agent # ReAct Agent
 from langgraph.graph import StateGraph, END
 from langchain_core.tools import tool
 import google.generativeai as genai # Gemini 추가
+from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain.tools.retriever import create_retriever_tool
 from langchain_core.documents import Document
 
 # --- 4. 환경 설정 및 FastAPI 앱 초기화 ---
@@ -67,16 +69,17 @@ class MasterAgentState(TypedDict):
 # 5-2. 라우터 노드 정의
 router_prompt = ChatPromptTemplate.from_template(
     """당신은 사용자의 요청을 분석하여 어떤 담당자에게 전달해야 할지 결정하는 AI 라우터입니다.
-    사용자의 요청을 보고, 아래 두 가지 경로 중 가장 적절한 경로 하나만 골라 그 이름만 정확히 답변해주세요.
+    사용자의 요청을 보고, 아래 세 가지 경로 중 가장 적절한 경로 하나만 골라 그 이름만 정확히 답변해주세요.
  
     [경로 설명]
     - `meeting_matching`: 사용자가 '새로운 모임'을 만들려고 할 때, 기존에 있던 '유사한 모임'을 추천해주는 경로입니다. 입력에 'title', 'description' 키가 포함되어 있으면 이 경로일 확률이 높습니다.
     - `hobby_recommendation`: 사용자에게 '새로운 취미' 자체를 추천해주는 경로입니다. 입력에 'survey' 키가 포함되어 있으면 이 경로일 확률이 매우 높습니다.
+    - `general_search`: 사용자가 날씨, 맛집, 특정 정보 검색 등 '일반적인 질문'을 하거나, '모임/취미 추천' 이외의 대화를 시도할 때 사용되는 경로입니다. 예를 들어 "주말에 비 오는데 뭐하지?" 와 같은 질문이 해당됩니다.
  
     [사용자 요청]:
     {user_input}
  
-    [판단 결과 (meeting_matching 또는 hobby_recommendation)]:
+    [판단 결과 (meeting_matching, hobby_recommendation, 또는 general_search)]:
     """
 )
 router_chain = router_prompt | llm | StrOutputParser()
@@ -84,13 +87,78 @@ router_chain = router_prompt | llm | StrOutputParser()
 def route_request(state: MasterAgentState):
     """사용자의 입력을 보고 어떤 전문가에게 보낼지 결정하는 노드"""
     logging.info("--- ROUTING ---")
-    # [수정] 불필요한 로그 라인을 제거합니다.
+    # [수정] 불필요한 로그 라인을 제거하고, invoke에 user_input을 직접 전달합니다.
     route_decision = router_chain.invoke({"user_input": state['user_input']})
     cleaned_decision = route_decision.strip().lower().replace("'", "").replace('"', '')
     logging.info(f"라우팅 결정: {cleaned_decision}")
     return {"route": cleaned_decision}
 
 # 5-3. 전문가 호출 노드들 정의
+
+# 전문가 0: 범용 검색 에이전트 (신규 추가)
+def call_general_search_agent(state: MasterAgentState):
+    """'범용 검색 에이전트'를 호출하여 웹 검색 또는 내부 모임 DB 검색을 수행하는 노드"""
+    logging.info("--- CALLING: General Search Agent ---")
+
+    # 1. 도구 정의
+    # 1-1. 웹 검색 도구
+    tavily_tool = TavilySearchResults(max_results=3, name="web_search")
+    tavily_tool.description = "날씨, 뉴스, 맛집, 특정 주제에 대한 최신 정보 등 외부 세계에 대한 질문에 답할 때 사용합니다."
+
+    # 1-2. 내부 모임 DB 검색 도구 (기존 로직 재활용)
+    meeting_index_name = os.getenv("PINECONE_INDEX_NAME_MEETING")
+    if not meeting_index_name: raise ValueError("'.env' 파일에 PINECONE_INDEX_NAME_MEETING 변수를 설정해야 합니다.")
+    embedding_function = OpenAIEmbeddings(model='text-embedding-3-large')
+    vector_store = PineconeVectorStore.from_existing_index(index_name=meeting_index_name, embedding=embedding_function)
+    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={'k': 3})
+    
+    moit_meeting_retriever_tool = create_retriever_tool(
+        retriever,
+        "moit_internal_meeting_search",
+        "MOIT 서비스 내에 등록된 기존 모임 정보를 검색합니다. '실내 활동', '서울 지역 주말 모임' 등 사용자가 찾는 조건에 맞는 모임을 찾아 추천할 때 사용합니다."
+    )
+
+    tools = [tavily_tool, moit_meeting_retriever_tool]
+
+    # 2. ReAct 에이전트 생성
+    # [중요] ReAct 프롬프트에 에이전트의 역할과 도구 사용법을 명확히 지시합니다.
+    react_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", """당신은 사용자의 질문에 가장 유용한 답변을 제공하는 AI 어시스턴트 'MOIT'입니다.
+            당신은 두 가지 도구를 사용할 수 있습니다: 'web_search'와 'moit_internal_meeting_search'.
+
+            [지침]
+            1. 먼저 사용자의 질문 의도를 파악합니다.
+            2. 만약 질문이 날씨, 뉴스, 일반 상식 등 외부 정보가 필요하다면 'web_search'를 사용하세요.
+            3. 만약 질문이 MOIT 서비스 내의 '모임'을 찾아달라는 요청이라면 'moit_internal_meeting_search'를 사용하세요.
+            4. "주말에 비 오는데 뭐할까?" 와 같이 복합적인 질문에는, 먼저 'web_search'로 날씨를 확인한 후, 그 결과를 바탕으로 'moit_internal_meeting_search'를 사용해 '실내 모임'을 찾는 등 여러 도구를 조합하여 최적의 답변을 만드세요.
+            5. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달합니다. MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
+            """),
+            MessagesPlaceholder(variable_name="chat_history", optional=True),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ]
+    )
+    
+    general_agent_runnable = create_react_agent(llm, tools, react_prompt)
+
+    # 3. 에이전트 실행
+    # MasterAgent의 user_input 형식에 맞게 실제 질문을 추출합니다.
+    # 예: {'messages': [['user', '주말에 비오는데 뭐하지?']]}
+    try:
+        user_question = state['user_input']['messages'][0][1]
+    except (KeyError, IndexError):
+        # 만약 위 구조가 아닐 경우, user_input 전체를 사용
+        user_question = str(state['user_input'])
+
+    logging.info(f"범용 검색 에이전트에게 전달된 질문: {user_question}")
+    
+    result = general_agent_runnable.invoke({"input": user_question})
+    
+    final_answer = result.get("output", "질문을 이해하지 못했습니다. 다시 질문해주세요.")
+    logging.info(f"범용 검색 에이전트의 최종 답변: {final_answer}")
+    
+    return {"final_answer": final_answer}
 
 # 전문가 1: 모임 매칭 에이전트 (SubGraph) - main_tea.py 코드 기반
 def call_meeting_matching_agent(state: MasterAgentState):
@@ -428,17 +496,23 @@ master_graph_builder = StateGraph(MasterAgentState)
 master_graph_builder.add_node("router", route_request)
 master_graph_builder.add_node("meeting_matcher", call_meeting_matching_agent)
 master_graph_builder.add_node("hobby_recommender", call_multimodal_hobby_agent)
+master_graph_builder.add_node("general_searcher", call_general_search_agent) # 새 노드 추가
 
 master_graph_builder.set_entry_point("router")
 
 master_graph_builder.add_conditional_edges(
     "router", 
     lambda state: state['route'],
-    {"meeting_matching": "meeting_matcher", "hobby_recommendation": "hobby_recommender"}
+    {
+        "meeting_matching": "meeting_matcher", 
+        "hobby_recommendation": "hobby_recommender",
+        "general_search": "general_searcher" # 새 경로 연결
+    }
 )
 
 master_graph_builder.add_edge("meeting_matcher", END)
 master_graph_builder.add_edge("hobby_recommender", END)
+master_graph_builder.add_edge("general_searcher", END) # 새 노드 종료점 연결
 
 master_agent = master_graph_builder.compile()
 

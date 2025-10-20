@@ -29,6 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_nickname'] = $user['nickname'];
 
+                // [개선 제안] 마지막 로그인 시간 업데이트
+                $stmt_update = $pdo->prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?");
+                $stmt_update->execute([$user['id']]);
+
                 redirect('../index.php');
             } else {
                 $error_message = '아이디 또는 비밀번호가 올바르지 않습니다.';

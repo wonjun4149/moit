@@ -64,65 +64,78 @@ try {
             <div class="left-section">
                 <h2>관심사별 정모 일정</h2>
 
-                <div class="category-filters">
-                    <button class="filter-btn active" data-category="전체"># 전체</button>
-                    <button class="filter-btn" data-category="취미 및 여가"># 취미 및 여가</button>
-                    <button class="filter-btn" data-category="운동 및 액티비티"># 운동 및 액티비티</button>
-                    <button class="filter-btn" data-category="성장 및 배움"># 성장 및 배움</button>
-                    <button class="filter-btn" data-category="문화 및 예술"># 문화 및 예술</button>
-                    <button class="filter-btn" data-category="푸드 및 드링크"># 푸드 및 드링크</button>
-                    <button class="filter-btn" data-category="여행 및 탐방"># 여행 및 탐방</button>
-                    <button class="filter-btn" data-category="봉사 및 참여" style="display: none;"># 봉사 및 참여</button>
-                    <button id="show-more-btn">v 더보기</button>
+                <!-- AI 검색 결과가 표시될 영역 (초기에는 숨김) -->
+                <div id="ai-search-result-container" style="display: none;">
+                    <div class="ai-search-header">
+                        <h3>AI 검색 결과</h3>
+                        <button id="back-to-list-btn">목록으로 돌아가기</button>
+                    </div>
+                    <div id="ai-search-result-content" class="ai-result-box">
+                        <p>AI가 답변을 생성하고 있습니다. 잠시만 기다려주세요...</p>
+                    </div>
                 </div>
 
-                <div class="sorting-options">
-                    <a href="#" class="sort-link active" data-sort="latest">최신순</a>
-                    <a href="#" class="sort-link" data-sort="deadline">마감 임박순</a>
-                </div>
+                <!-- 기존 모임 목록 영역 -->
+                <div id="meeting-list-container">
+                    <div class="category-filters">
+                        <button class="filter-btn active" data-category="전체"># 전체</button>
+                        <button class="filter-btn" data-category="취미 및 여가"># 취미 및 여가</button>
+                        <button class="filter-btn" data-category="운동 및 액티비티"># 운동 및 액티비티</button>
+                        <button class="filter-btn" data-category="성장 및 배움"># 성장 및 배움</button>
+                        <button class="filter-btn" data-category="문화 및 예술"># 문화 및 예술</button>
+                        <button class="filter-btn" data-category="푸드 및 드링크"># 푸드 및 드링크</button>
+                        <button class="filter-btn" data-category="여행 및 탐방"># 여행 및 탐방</button>
+                        <button class="filter-btn" data-category="봉사 및 참여" style="display: none;"># 봉사 및 참여</button>
+                        <button id="show-more-btn">v 더보기</button>
+                    </div>
 
+                    <div class="sorting-options">
+                        <a href="#" class="sort-link active" data-sort="latest">최신순</a>
+                        <a href="#" class="sort-link" data-sort="deadline">마감 임박순</a>
+                    </div>
 
-                <div class="meeting-cards" id="meeting-cards-container">
-                    <?php if (empty($meetings)): ?>
-                        <div id="empty-meetings-message" class="empty-message">
-                            <p>😲 현재 생성된 모임이 없습니다.</p>
-                            <span>오른쪽 '새 모임 만들기' 버튼으로 첫 모임을 만들어보세요!</span>
-                        </div>
-                    <?php else: ?>
-                        <?php foreach ($meetings as $meeting): ?>
-                            <?php
-                                // 설명을 80자로 자르는 로직
-                                $description_full = htmlspecialchars($meeting['description']);
-                                $description_short = $description_full;
-                                if (mb_strlen($description_short) > 50) { // 이미지와 유사하게 글자 수를 줄임
-                                    $description_short = mb_substr($description_short, 0, 50) . '...';
-                                }
-                                $current_members = $meeting['current_members_count'] + 1; // 개설자 포함
-                                $isRecruiting = $current_members < $meeting['max_members'];
-                                $status_text = $isRecruiting ? '모집중' : '모집완료';
-                                $status_class = $isRecruiting ? 'recruiting' : 'completed';
-                                $formatted_date = date("Y. n. j.", strtotime($meeting['meeting_date']));
-                            ?>
-                            <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-card-link">
-                                <div class="meeting-card" data-category="<?php echo htmlspecialchars($meeting['category']); ?>">
-                                    <div class="card-image">
-                                        <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
-                                             alt="<?php echo htmlspecialchars($meeting['title']); ?>">
-                                    </div>
-                                    <div class="card-content">
-                                        <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
-                                        <p class="card-description-short"><?php echo $description_short; ?></p>
-                                        
-                                        <div class="card-details">
-                                            <span class="detail-item"><?php echo htmlspecialchars($meeting['location']); ?></span>
-                                            <span class="detail-item"><?php echo $formatted_date; ?></span>
-                                            <span class="detail-item member-count"><?php echo $current_members; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                    <div class="meeting-cards" id="meeting-cards-container">
+                        <?php if (empty($meetings)): ?>
+                            <div id="empty-meetings-message" class="empty-message">
+                                <p>😲 현재 생성된 모임이 없습니다.</p>
+                                <span>오른쪽 '새 모임 만들기' 버튼으로 첫 모임을 만들어보세요!</span>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($meetings as $meeting): ?>
+                                <?php
+                                    // 설명을 80자로 자르는 로직
+                                    $description_full = htmlspecialchars($meeting['description']);
+                                    $description_short = $description_full;
+                                    if (mb_strlen($description_short) > 50) { // 이미지와 유사하게 글자 수를 줄임
+                                        $description_short = mb_substr($description_short, 0, 50) . '...';
+                                    }
+                                    $current_members = $meeting['current_members_count'] + 1; // 개설자 포함
+                                    $isRecruiting = $current_members < $meeting['max_members'];
+                                    $status_text = $isRecruiting ? '모집중' : '모집완료';
+                                    $status_class = $isRecruiting ? 'recruiting' : 'completed';
+                                    $formatted_date = date("Y. n. j.", strtotime($meeting['meeting_date']));
+                                ?>
+                                <a href="meeting_detail.php?id=<?php echo $meeting['id']; ?>" class="meeting-card-link">
+                                    <div class="meeting-card" data-category="<?php echo htmlspecialchars($meeting['category']); ?>">
+                                        <div class="card-image">
+                                            <img src="../<?php echo htmlspecialchars($meeting['image_path'] ?? 'assets/default_image.png'); ?>" 
+                                                 alt="<?php echo htmlspecialchars($meeting['title']); ?>">
+                                        </div>
+                                        <div class="card-content">
+                                            <h3 class="card-title"><?php echo htmlspecialchars($meeting['title']); ?></h3>
+                                            <p class="card-description-short"><?php echo $description_short; ?></p>
+                                            
+                                            <div class="card-details">
+                                                <span class="detail-item"><?php echo htmlspecialchars($meeting['location']); ?></span>
+                                                <span class="detail-item"><?php echo $formatted_date; ?></span>
+                                                <span class="detail-item member-count"><?php echo $current_members; ?> / <?php echo $meeting['max_members']; ?>명</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </a>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
@@ -130,7 +143,7 @@ try {
                 <a href="create_meeting_form.php" class="btn-create-meeting">+ 새 모임 만들기</a>
                 
                 <div class="search-box">
-                    <h3>모임 검색</h3>
+                    <h3>AI 스마트 검색</h3>
                     <div class="search-input-wrapper">
                         <input type="text" id="search-input" placeholder="제목, 카테고리 검색">
                         <button id="search-button">🔍</button>
@@ -153,20 +166,87 @@ try {
             const categoryFilterContainer = document.querySelector('.category-filters');
             const sortingOptionsContainer = document.querySelector('.sorting-options');
             const meetingCardsContainer = document.getElementById('meeting-cards-container');
+            
+            // AI 검색 관련 요소
+            const meetingListContainer = document.getElementById('meeting-list-container');
+            const aiSearchResultContainer = document.getElementById('ai-search-result-container');
+            const aiSearchResultContent = document.getElementById('ai-search-result-content');
+            const backToListBtn = document.getElementById('back-to-list-btn');
+
+            // AI 스마트 검색 실행 함수
+            function performAiSearch() {
+                const query = searchInput.value.trim();
+                if (query.length < 5) { // 너무 짧은 질문은 기존 필터링으로 처리
+                    applyFilters();
+                    return;
+                }
+
+                // UI 전환: 목록 숨기고 AI 결과창 표시
+                meetingListContainer.style.display = 'none';
+                aiSearchResultContainer.style.display = 'block';
+                aiSearchResultContent.innerHTML = '<p class="loading-text">AI가 답변을 생성하고 있습니다. 잠시만 기다려주세요...</p>';
+                searchButton.disabled = true;
+                searchButton.textContent = '🧠';
+
+                fetch('ai_search.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.answer) {
+                        // [개선 제안] AI 응답의 마크다운을 HTML로 변환
+                        let formattedAnswer = data.answer;
+                        // 줄바꿈 -> <br>
+                        formattedAnswer = formattedAnswer.replace(/\n/g, '<br>');
+                        // **굵은 글씨** -> <strong>
+                        formattedAnswer = formattedAnswer.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        // * 목록 or - 목록 -> <ul><li>
+                        formattedAnswer = formattedAnswer.replace(/<br>\s*[\*-]\s(.*?)(?=<br>|$)/g, '<ul><li>$1</li></ul>').replace(/<\/ul><br><ul>/g, '');
+                        aiSearchResultContent.innerHTML = formattedAnswer;
+                    } else {
+                        aiSearchResultContent.innerHTML = `<p class="error-text">오류: ${data.error || 'AI 검색 중 문제가 발생했습니다.'}</p>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('AI Search Error:', error);
+                    aiSearchResultContent.innerHTML = '<p class="error-text">AI 서버와 통신하는 데 실패했습니다. 잠시 후 다시 시도해주세요.</p>';
+                })
+                .finally(() => {
+                    searchButton.disabled = false;
+                    searchButton.textContent = '🔍';
+                });
+            }
+
+            // 검색 버튼 클릭 이벤트
+            searchButton.addEventListener('click', performAiSearch);
+
+            // 엔터 키 입력 이벤트
+            searchInput.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    performAiSearch();
+                }
+            });
+
+            // '목록으로 돌아가기' 버튼 이벤트
+            backToListBtn.addEventListener('click', function() {
+                aiSearchResultContainer.style.display = 'none';
+                meetingListContainer.style.display = 'block';
+                searchInput.value = ''; // 검색창 초기화
+                applyFilters(); // 필터 초기화
+            });
 
             function applyFilters() {
                 const searchTerm = searchInput.value.toLowerCase();
                 const activeCategoryBtn = categoryFilterContainer.querySelector('.filter-btn.active');
                 const selectedCategory = activeCategoryBtn ? activeCategoryBtn.dataset.category : '전체';
-
                 document.querySelectorAll('.meeting-card-link').forEach(link => {
                     const card = link.querySelector('.meeting-card');
                     const title = card.querySelector('.card-title').textContent.toLowerCase();
                     const cardCategory = card.dataset.category;
-
                     const searchMatch = title.includes(searchTerm) || cardCategory.toLowerCase().includes(searchTerm);
                     const categoryMatch = (selectedCategory === '전체') || (cardCategory === selectedCategory);
-
                     if (searchMatch && categoryMatch) {
                         link.style.display = 'block';
                     } else {
@@ -174,6 +254,8 @@ try {
                     }
                 });
             }
+
+            // --- 이하 기존 코드 유지 ---
 
             function renderMeetingCards(meetings) {
                 meetingCardsContainer.innerHTML = ''; // 기존 카드 삭제
@@ -265,8 +347,6 @@ try {
                     showMoreBtn.style.display = 'none';
                 });
             }
-
-            searchInput.addEventListener('keyup', applyFilters);
 
             // 마감 임박 모임 불러오기
             function renderDeadlineMeetings(meetings) {

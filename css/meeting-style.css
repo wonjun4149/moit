@@ -289,6 +289,48 @@ body {
     background-color: #0056b3;
 }
 
+/* --- 신규 스타일: AI 검색 결과 --- */
+#ai-search-result-container {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    border: 1px solid #eee;
+}
+
+.ai-search-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.ai-search-header h3 {
+    margin: 0;
+    font-size: 1.4em;
+    color: #333;
+}
+
+#back-to-list-btn {
+    padding: 8px 16px;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+#back-to-list-btn:hover {
+    background-color: #f0f0f0;
+}
+
+.ai-result-box {
+    line-height: 1.7;
+    font-size: 1.05em;
+}
+
 /* --- 신규 스타일: 마감 임박 위젯 --- */
 .deadline-box {
     background-color: #fff7e6;
