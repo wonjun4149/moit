@@ -168,7 +168,7 @@ def call_general_search_agent(state: MasterAgentState):
     
     # [수정] chat_history 키를 추가하여 에이전트가 기대하는 입력 형식을 맞춰줍니다.
     # 대화 기록이 없으므로 빈 리스트를 전달합니다.
-    result = general_agent_runnable.invoke(
+    result = general_agent_runnable.invoke(    
         {"input": user_question, "chat_history": []}
     )
     
@@ -176,6 +176,7 @@ def call_general_search_agent(state: MasterAgentState):
     logging.info(f"범용 검색 에이전트의 최종 답변: {final_answer}")
     
     return {"final_answer": final_answer}
+
 
 # 전문가 1: 모임 매칭 에이전트 (SubGraph) - main_tea.py 코드 기반
 def call_meeting_matching_agent(state: MasterAgentState):
