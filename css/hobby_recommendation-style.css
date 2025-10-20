@@ -327,7 +327,7 @@ body {
 
 /* MOIT 통계 섹션 */
 .moit-stats {
-    text-align: center;
+    text-align: left;
     padding-top: 10px; /* 제목과 간격 */
 }
 
