@@ -147,7 +147,7 @@ def call_general_search_agent(state: MasterAgentState):
             6. 날씨, 뉴스, 일반 상식 등 외부 정보가 필요한 다른 모든 질문에는 `web_search`를 사용하세요.
             7. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달하며, MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
             """),
-            MessagesPlaceholder(variable_name="chat_history", optional=True),
+            MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}"), # "user_input" 대신 "input" 사용
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ]
