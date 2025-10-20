@@ -327,20 +327,8 @@ body {
 
 /* MOIT 통계 섹션 */
 .moit-stats {
-    background-color: #f8f9fa;
-    border-radius: 15px;
-    padding: 25px;
     text-align: center;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e9ecef;
-}
-
-.moit-stats h3 {
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 20px;
-    font-weight: bold;
-    color: var(--primary-color);
+    padding-top: 10px; /* 제목과 간격 */
 }
 
 .stat-item {

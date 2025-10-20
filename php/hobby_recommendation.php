@@ -283,8 +283,8 @@ debug_output("최종 상태", [
                     </div>
                 <?php else: ?>
                     <!-- MOIT 통계 -->
+                    <h3>MOIT 통계</h3>
                     <div class="moit-stats">
-                        <h3>MOIT 통계</h3>
                         <div class="stat-item">
                             <strong>총 모임수</strong>
                             <span><?php echo $total_meetings; ?></span>
