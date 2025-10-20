@@ -132,7 +132,7 @@ def call_general_search_agent(state: MasterAgentState):
     tools = [tavily_tool, moit_meeting_retriever_tool, get_current_date_tool]
 
     # 2. ReAct 에이전트 생성
-    # [중요] ReAct 프롬프트에 에이전트의 역할과 도구 사용법을 명확히 지시합니다.
+    # ReAct 프롬프트에 에이전트의 역할과 도구 사용법을 명확히 지시합니다.
     react_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", """당신은 사용자의 질문에 가장 유용한 답변을 제공하는 AI 어시스턴트 'MOIT'입니다.
@@ -147,7 +147,7 @@ def call_general_search_agent(state: MasterAgentState):
             6. 날씨, 뉴스, 일반 상식 등 외부 정보가 필요한 다른 모든 질문에는 `web_search`를 사용하세요.
             7. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달하며, MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
             """),
-            MessagesPlaceholder(variable_name="chat_history", optional=True),
+            MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}"),
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ]
@@ -167,7 +167,6 @@ def call_general_search_agent(state: MasterAgentState):
     logging.info(f"범용 검색 에이전트에게 전달된 질문: {user_question}")
     
     # [수정] chat_history 키를 추가하여 에이전트가 기대하는 입력 형식을 맞춰줍니다.
-    # 대화 기록이 없으므로 빈 리스트를 전달합니다.
     result = general_agent_runnable.invoke(    
         {"input": user_question, "chat_history": []}
     )
