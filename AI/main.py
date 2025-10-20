@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(message)s')
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
-from langchain_pinecone import PineconeVectorStore # ReAct Agent
+from langchain_pinecone.vectorstores import PineconeVectorStore
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langgraph.graph import StateGraph, END
 from langchain_core.tools import tool
