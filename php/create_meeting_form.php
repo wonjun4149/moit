@@ -173,7 +173,7 @@ $site_title = "MOIT - 새 모임 만들기";
                         <strong>${meeting.title}</strong>
                         <span>${meeting.category} / ${meeting.location}</span>
                     </div>
-                    <a href="meeting_detail.php?id=${meeting.id}" class="btn-secondary" target="_blank">자세히 보기</a>
+                    <a href="meeting_detail.php?id=${meeting.id}&from=recommend" class="btn-secondary" target="_blank">자세히 보기</a>
                 `;
                 listElement.appendChild(meetingItem);
             });

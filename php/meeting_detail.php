@@ -142,7 +142,14 @@ $status_class = $is_full ? 'completed' : 'recruiting';
                         </button>
                     </form>
                 <?php endif; ?>
-                 <a href="meeting.php" class="btn-secondary">목록으로</a>
+                <?php 
+                    $from = $_GET['from'] ?? '';
+                    if ($from === 'recommend') {
+                        echo '<button type="button" onclick="window.close()" class="btn-secondary">목록으로 돌아가기</button>';
+                    } else {
+                        echo '<a href="meeting.php" class="btn-secondary">목록으로 돌아가기</a>';
+                    }
+                ?>
             </div>
         </div>
     </main>
