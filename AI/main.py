@@ -18,8 +18,8 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(message)s')
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
-from langchain_pinecone import PineconeVectorStore
-from langgraph.prebuilt import create_react_agent # ReAct Agent
+from langchain_pinecone import PineconeVectorStore # ReAct Agent
+from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langgraph.graph import StateGraph, END
 from langchain_core.tools import tool
 import google.generativeai as genai # Gemini 추가
@@ -140,7 +140,8 @@ def call_general_search_agent(state: MasterAgentState):
         ]
     )
     
-    general_agent_runnable = create_react_agent(llm, tools, react_prompt)
+    agent = create_openai_tools_agent(llm, tools, react_prompt)
+    general_agent_runnable = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
     # 3. 에이전트 실행
     # MasterAgent의 user_input 형식에 맞게 실제 질문을 추출합니다.
