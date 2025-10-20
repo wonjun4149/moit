@@ -5,8 +5,12 @@ requests
 openai
 langchain==0.1.20
 langchain-core==0.1.52
-langchain-openai
+langchain-openai==0.1.7
 langchain-pinecone==0.1.1
-langgraph
-langchain-community
+langgraph==0.0.51
+langchain-community==0.0.38
 tavily-python
+google-generativeai
+pillow
+pinecone-client
+uvicorn
