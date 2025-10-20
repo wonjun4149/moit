@@ -64,7 +64,6 @@ try {
             <div class="left-section">
                 <h2>관심사별 정모 일정</h2>
 
-                <!-- AI 검색 결과가 표시될 영역 (초기에는 숨김) -->
                 <div id="ai-search-result-container" style="display: none;">
                     <div class="ai-search-header">
                         <h3>AI 검색 결과</h3>
@@ -75,20 +74,35 @@ try {
                     </div>
                 </div>
 
-                <!-- 기존 모임 목록 영역 -->
                 <div id="meeting-list-container">
+                    
                     <div class="category-filters">
-                        <button class="filter-btn active" data-category="전체"># 전체</button>
-                        <button class="filter-btn" data-category="취미 및 여가"># 취미 및 여가</button>
-                        <button class="filter-btn" data-category="운동 및 액티비티"># 운동 및 액티비티</button>
-                        <button class="filter-btn" data-category="성장 및 배움"># 성장 및 배움</button>
-                        <button class="filter-btn" data-category="문화 및 예술"># 문화 및 예술</button>
-                        <button class="filter-btn" data-category="푸드 및 드링크"># 푸드 및 드링크</button>
-                        <button class="filter-btn" data-category="여행 및 탐방"># 여행 및 탐방</button>
-                        <button class="filter-btn" data-category="봉사 및 참여" style="display: none;"># 봉사 및 참여</button>
+                        <button class="filter-btn active" data-category="전체">
+                            <img src="../img/all_icon.png" alt="전체" class="tag-icon"> # 전체
+                        </button>
+                        <button class="filter-btn" data-category="취미 및 여가">
+                            <img src="../img/hobby_icon.png" alt="취미 및 여가" class="tag-icon"> # 취미 및 여가
+                        </button>
+                        <button class="filter-btn" data-category="운동 및 액티비티">
+                            <img src="../img/activity_icon.png" alt="운동 및 액티비티" class="tag-icon"> # 운동 및 액티비티
+                        </button>
+                        <button class="filter-btn" data-category="성장 및 배움">
+                            <img src="../img/growth_icon.png" alt="성장 및 배움" class="tag-icon"> # 성장 및 배움
+                        </button>
+                        <button class="filter-btn" data-category="문화 및 예술">
+                            <img src="../img/culture_icon.png" alt="문화 및 예술" class="tag-icon"> # 문화 및 예술
+                        </button>
+                        <button class="filter-btn" data-category="푸드 및 드링크">
+                            <img src="../img/food_icon.png" alt="푸드 및 드링크" class="tag-icon"> # 푸드 및 드링크
+                        </button>
+                        <button class="filter-btn" data-category="여행 및 탐방">
+                            <img src="../img/travel_icon.png" alt="여행 및 탐방" class="tag-icon"> # 여행 및 탐방
+                        </button>
+                        <button class="filter-btn" data-category="봉사 및 참여" style="display: none;">
+                             <img src="../img/volunteer_icon.png" alt="봉사 및 참여" class="tag-icon"> # 봉사 및 참여
+                        </button>
                         <button id="show-more-btn">v 더보기</button>
                     </div>
-
                     <div class="sorting-options">
                         <a href="#" class="sort-link active" data-sort="latest">최신순</a>
                         <a href="#" class="sort-link" data-sort="deadline">마감 임박순</a>
@@ -327,12 +341,14 @@ try {
             });
 
             categoryFilterContainer.addEventListener('click', (e) => {
-                if (e.target.classList.contains('filter-btn')) {
+                // 클릭된 요소가 버튼 자체이거나 버튼의 자식 요소(img, text)일 수 있으므로 closest를 사용
+                const button = e.target.closest('.filter-btn');
+                if (button) {
                     const currentActive = categoryFilterContainer.querySelector('.filter-btn.active');
                     if (currentActive) {
                         currentActive.classList.remove('active');
                     }
-                    e.target.classList.add('active');
+                    button.classList.add('active');
                     applyFilters();
                 }
             });
@@ -342,7 +358,7 @@ try {
                 showMoreBtn.addEventListener('click', () => {
                     const hiddenCategory = document.querySelector('[data-category="봉사 및 참여"]');
                     if (hiddenCategory) {
-                        hiddenCategory.style.display = 'inline-block';
+                        hiddenCategory.style.display = 'inline-flex'; // flex로 변경
                     }
                     showMoreBtn.style.display = 'none';
                 });
