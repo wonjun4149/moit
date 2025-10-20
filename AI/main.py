@@ -148,7 +148,7 @@ def call_general_search_agent(state: MasterAgentState):
             7. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달하며, MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
             """),
             MessagesPlaceholder(variable_name="chat_history", optional=True),
-            ("human", "{input}"),
+            ("human", "{input}"), # "user_input" 대신 "input" 사용
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ]
     )
@@ -164,10 +164,12 @@ def call_general_search_agent(state: MasterAgentState):
         # 만약 위 구조가 아닐 경우, user_input 전체를 사용
         user_question = str(state['user_input'])
 
-    logging.info(f"범용 검색 에이전트에게 전달된 질문: {user_question}")
-    
-    result = general_agent_runnable.invoke({"input": user_question, "chat_history": []})
-    
+    input_data = {"input": user_question, "chat_history": []} # chat_history 추가
+    logging.info(f"범용 검색 에이전트에게 전달된 질문: {user_question}") # 로깅 수정
+    logging.info(f"general_agent_runnable.invoke에 전달되는 입력: {input_data}") # 로깅 추가
+
+    result = general_agent_runnable.invoke(input_data) # input_data를 사용하여 호출
+
     final_answer = result.get("output", "질문을 이해하지 못했습니다. 다시 질문해주세요.")
     logging.info(f"범용 검색 에이전트의 최종 답변: {final_answer}")
     
