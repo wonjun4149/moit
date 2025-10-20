@@ -32,7 +32,7 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 5fr 1fr; /* 5:1 비율로 수정 */
+    grid-template-columns: 4fr 1fr; /* 4:1 비율로 수정 */
     gap: 40px;
 }
 
