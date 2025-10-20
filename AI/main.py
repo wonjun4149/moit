@@ -166,7 +166,7 @@ def call_general_search_agent(state: MasterAgentState):
 
     logging.info(f"범용 검색 에이전트에게 전달된 질문: {user_question}")
     
-    result = general_agent_runnable.invoke({"input": user_question})
+    result = general_agent_runnable.invoke({"input": user_question, "chat_history": []})
     
     final_answer = result.get("output", "질문을 이해하지 못했습니다. 다시 질문해주세요.")
     logging.info(f"범용 검색 에이전트의 최종 답변: {final_answer}")
