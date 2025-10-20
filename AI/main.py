@@ -171,10 +171,6 @@ def call_general_search_agent(state: MasterAgentState):
             5. "주말에 비 오는데 뭐할까?" 와 같이 복합적인 질문에는, 먼저 `web_search`로 날씨를 확인한 후, 그 결과를 바탕으로 `moit_internal_meeting_search`를 사용해 '실내 모임'을 찾는 등 여러 도구를 조합하여 최적의 답변을 만드세요.
             6. 날씨, 뉴스, 일반 상식 등 외부 정보가 필요한 다른 모든 질문에는 `web_search`를 사용하세요.
             7. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달하며, MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
-            2. 만약 질문이 날씨, 뉴스, 일반 상식 등 외부 정보가 필요하다면 'web_search'를 사용하세요.
-            3. 만약 질문이 MOIT 서비스 내의 '모임'을 찾아달라는 요청이라면 'moit_internal_meeting_search'를 사용하세요.
-            4. "주말에 비 오는데 뭐할까?" 와 같이 복합적인 질문에는, 먼저 'web_search'로 날씨를 확인한 후, 그 결과를 바탕으로 'moit_internal_meeting_search'를 사용해 '실내 모임'을 찾는 등 여러 도구를 조합하여 최적의 답변을 만드세요.
-            5. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달합니다. MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
             """),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}"), # "user_input" 대신 "input" 사용
