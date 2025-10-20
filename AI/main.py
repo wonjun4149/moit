@@ -394,7 +394,13 @@ def analyze_photo_tool(image_paths: list[str]) -> str:
             try:
                 img = Image.open(path)
                 # Pillow가 지원하지만 Gemini가 지원하지 않는 형식을 대비해 format 확인
-                if img.format.upper() in ['JPEG', 'PNG', 'WEBP', 'HEIC', 'HEIF']:
+                if img.format.upper() == 'MPO':
+                    # MPO 파일의 경우, 첫 번째 프레임(일반적으로 JPEG)을 사용
+                    img.seek(0)
+                    # MPO에서 추출한 이미지는 format 속성이 없을 수 있으므로, JPEG로 간주하고 추가
+                    image_parts.append(img.copy()) # copy()로 안전하게 추가
+                    logging.info(f"MPO 형식 파일에서 JPEG 프레임을 추출했습니다: {path}")
+                elif img.format.upper() in ['JPEG', 'PNG', 'WEBP', 'HEIC', 'HEIF']:
                     image_parts.append(img)
                 else:
                     logging.warning(f"지원하지 않는 이미지 형식({img.format})을 건너뜁니다: {path}")
