@@ -33,26 +33,12 @@ debug_output("로그인 확인됨", $_SESSION['user_id']);
 $site_title = "MOIT - 취미 추천";
 $error_message = '';
 $recommendations = [];
-$popular_hobbies = [];
-$meetup_posts = [];
 
 // 데이터베이스 연결
 try {
     debug_output("데이터베이스 연결 시도");
     $pdo = getDBConnection();
     debug_output("데이터베이스 연결 성공");
-    
-    // 인기 취미 가져오기
-    $stmt = $pdo->query("
-        SELECT h.*, COUNT(hr.hobby_id) as recommendation_count
-        FROM hobbies h
-        LEFT JOIN hobby_recommendations hr ON h.id = hr.hobby_id
-        GROUP BY h.id
-        ORDER BY recommendation_count DESC, h.name ASC
-        LIMIT 10
-    ");
-    $popular_hobbies = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    debug_output("인기 취미 로드됨", count($popular_hobbies) . "개");
     
 } catch (PDOException $e) {
     debug_output("데이터베이스 에러", $e->getMessage());
@@ -61,8 +47,7 @@ try {
 
 debug_output("최종 상태", [
     'recommendations_count' => count($recommendations),
-    'error_message' => $error_message,
-    'popular_hobbies_count' => count($popular_hobbies)
+    'error_message' => $error_message
 ]);
 ?>
 
@@ -282,21 +267,6 @@ debug_output("최종 상태", [
                     </div>
                 <?php else: ?>
                     <!-- AI 추천 결과가 없을 경우 (기본 상태) -->
-                    <h3>요즘 이런 취미로 많이 모여요</h3>
-                    <div class="popular-hobbies">
-                        <?php foreach ($popular_hobbies as $index => $hobby): ?>
-                            <div class="popular-hobby-item" onclick="loadMeetups(<?php echo $hobby['id']; ?>)">
-                                <div class="hobby-rank"><?php echo $index + 1; ?></div>
-                                <div class="hobby-info">
-                                    <h4 class="hobby-name"><?php echo htmlspecialchars($hobby['name']); ?></h4>
-                                    <span class="hobby-category"><?php echo htmlspecialchars($hobby['category']); ?></span>
-                                </div>
-                                <div class="hobby-count">
-                                    <span><?php echo $hobby['recommendation_count']; ?>회 추천</span>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
                 <?php endif; ?>
             </div>
         </div>
