@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import requests
 import json
+from datetime import datetime # 오늘 날짜 확인을 위해 추가
 from typing import List, TypedDict, Optional
 import logging
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_pinecone import PineconeVectorStore # ReAct Agent
-from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langgraph.prebuilt import create_react_agent
 from langgraph.graph import StateGraph, END
 from langchain_core.tools import tool
 import google.generativeai as genai # Gemini 추가
@@ -95,6 +96,13 @@ def route_request(state: MasterAgentState):
 
 # 5-3. 전문가 호출 노드들 정의
 
+# --- 범용 검색 에이전트에서 사용할 도구 ---
+@tool
+def get_current_date() -> str:
+    """오늘 날짜를 'YYYY년 MM월 DD일' 형식의 문자열로 반환합니다. '오늘', '내일', '이번 주'와 같은 상대적인 시간 표현을 정확히 해석해야 할 때 사용하세요."""
+    return datetime.now().strftime("%Y년 %m월 %d일")
+
+
 # 전문가 0: 범용 검색 에이전트 (신규 추가)
 def call_general_search_agent(state: MasterAgentState):
     """'범용 검색 에이전트'를 호출하여 웹 검색 또는 내부 모임 DB 검색을 수행하는 노드"""
@@ -118,21 +126,26 @@ def call_general_search_agent(state: MasterAgentState):
         "MOIT 서비스 내에 등록된 기존 모임 정보를 검색합니다. '실내 활동', '서울 지역 주말 모임' 등 사용자가 찾는 조건에 맞는 모임을 찾아 추천할 때 사용합니다."
     )
 
-    tools = [tavily_tool, moit_meeting_retriever_tool]
+    # 1-3. 오늘 날짜 확인 도구
+    get_current_date_tool = get_current_date
+
+    tools = [tavily_tool, moit_meeting_retriever_tool, get_current_date_tool]
 
     # 2. ReAct 에이전트 생성
     # [중요] ReAct 프롬프트에 에이전트의 역할과 도구 사용법을 명확히 지시합니다.
     react_prompt = ChatPromptTemplate.from_messages(
         [
             ("system", """당신은 사용자의 질문에 가장 유용한 답변을 제공하는 AI 어시스턴트 'MOIT'입니다.
-            당신은 두 가지 도구를 사용할 수 있습니다: 'web_search'와 'moit_internal_meeting_search'.
+            당신은 세 가지 도구를 사용할 수 있습니다: 'web_search', 'moit_internal_meeting_search', 'get_current_date'.
 
             [지침]
             1. 먼저 사용자의 질문 의도를 파악합니다.
-            2. 만약 질문이 날씨, 뉴스, 일반 상식 등 외부 정보가 필요하다면 'web_search'를 사용하세요.
-            3. 만약 질문이 MOIT 서비스 내의 '모임'을 찾아달라는 요청이라면 'moit_internal_meeting_search'를 사용하세요.
-            4. "주말에 비 오는데 뭐할까?" 와 같이 복합적인 질문에는, 먼저 'web_search'로 날씨를 확인한 후, 그 결과를 바탕으로 'moit_internal_meeting_search'를 사용해 '실내 모임'을 찾는 등 여러 도구를 조합하여 최적의 답변을 만드세요.
-            5. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달합니다. MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
+            2. 만약 질문에 '오늘', '내일', '이번 주'와 같은 상대적인 시간 표현이 포함되어 있다면, 가장 먼저 `get_current_date` 도구를 사용하여 오늘 날짜를 확인하세요.
+            3. 확인된 오늘 날짜를 바탕으로, 사용자가 질문한 시점(예: 내일은 'YYYY년 MM월 DD+1일')에 대한 정확한 정보를 `web_search`를 사용하여 검색하세요.
+            4. 만약 질문이 MOIT 서비스 내의 '모임'을 찾아달라는 요청이라면(예: "서울에서 할만한 주말 활동 찾아줘"), `moit_internal_meeting_search`를 사용하세요.
+            5. "주말에 비 오는데 뭐할까?" 와 같이 복합적인 질문에는, 먼저 `web_search`로 날씨를 확인한 후, 그 결과를 바탕으로 `moit_internal_meeting_search`를 사용해 '실내 모임'을 찾는 등 여러 도구를 조합하여 최적의 답변을 만드세요.
+            6. 날씨, 뉴스, 일반 상식 등 외부 정보가 필요한 다른 모든 질문에는 `web_search`를 사용하세요.
+            7. 최종 답변은 사용자에게 친절하고 자연스러운 말투로 정리하여 전달하며, MOIT 서비스의 모임을 추천할 때는 사용자의 참여를 유도하는 문구를 포함해주세요.
             """),
             MessagesPlaceholder(variable_name="chat_history", optional=True),
             ("human", "{input}"),
@@ -140,8 +153,7 @@ def call_general_search_agent(state: MasterAgentState):
         ]
     )
     
-    agent = create_openai_tools_agent(llm, tools, react_prompt)
-    general_agent_runnable = AgentExecutor(agent=agent, tools=tools, verbose=True)
+    general_agent_runnable = create_react_agent(llm, tools, react_prompt)
 
     # 3. 에이전트 실행
     # MasterAgent의 user_input 형식에 맞게 실제 질문을 추출합니다.
