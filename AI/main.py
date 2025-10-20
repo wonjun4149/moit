@@ -162,7 +162,7 @@ def call_general_search_agent(state: MasterAgentState):
             당신은 세 가지 도구를 사용할 수 있습니다: 'web_search', 'moit_internal_meeting_search', 'get_current_date'.
 
             [지침]
-            1. **시간 인식**: 질문에 '오늘', '내일' 등 상대적 시간이 있으면, 먼저 `get_current_date`로 오늘 날짜를 확인하고, 그 다음 `web_search`로 정확한 정보를 찾으세요. (예: 날씨)
+            1. **시간 인식**: 질문에 '오늘', '내일' 등 상대적 시간이 있으면, 먼저 `get_current_date`로 오늘 날짜를 확인하고, 그 다음 `web_search`로 가장 신뢰가는 사이트에서 정보를 찾으세요. (예: 날씨는 네이버날씨를 통해 검색하세요)
             2. **모임 검색**: "축구 하고 싶은데 모임 없나?"처럼 MOIT 서비스 내 모임을 찾는 요청에는 `moit_internal_meeting_search`를 사용하세요.
             3. **복합 질문 처리**: "비 오는 주말에 ?" 같은 질문에는, `web_search`로 날씨를 확인한 후, 그 결과를 이용해 `moit_internal_meeting_search`로 '실내 모임'을 찾거나 없다면 새로운 취미를 추천해주는 등 도구를 조합하여 최적의 답을 찾으세요.
             4. **일반 질문**: 그 외 모든 일반적인 질문(뉴스, 맛집, 상식, 추천)은 `web_search`를 사용하세요.
