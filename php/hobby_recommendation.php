@@ -403,18 +403,29 @@ debug_output("최종 상태", [
                 })
                 .then(data => {
                     if (data.success && data.recommendation) {
-                        // 성공적으로 결과를 받으면 오른쪽 섹션을 업데이트합니다.
+                        // [수정] 성공 시, 화면 레이아웃을 변경하고 결과를 표시합니다.
+                        const leftSection = document.querySelector('.left-section');
                         const rightSection = document.querySelector('.right-section');
-                        rightSection.innerHTML = `
-                            <div class="recommendations-container">
-                                <h3>🎉 맞춤 취미 추천 결과</h3>
-                                <div class="ai-recommendation-box" style="margin-top: 20px;">
-                                    ${data.recommendation.replace(/\n/g, '<br>')}
+
+                        if (leftSection && rightSection) {
+                            // 1. 왼쪽 설문 영역을 숨깁니다.
+                            leftSection.style.display = 'none';
+
+                            // 2. 오른쪽 결과 영역을 넓게 만듭니다.
+                            rightSection.style.flex = '1';
+                            rightSection.style.maxWidth = '800px'; // 결과가 표시될 최대 너비
+                            rightSection.innerHTML = `
+                                <div class="recommendations-container">
+                                    <h3>🎉 맞춤 취미 추천 결과</h3>
+                                    <div class="ai-recommendation-box" style="margin-top: 20px;">
+                                        ${data.recommendation.replace(/\n/g, '<br>')}
+                                    </div>
+                                    <div class="survey-actions">
+                                        <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
+                                    </div>
                                 </div>
-                                <div class="survey-actions">
-                                    <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
-                                </div>
-                            </div>`;
+                            `;
+                        }
                     } else {
                         alert('추천을 생성하는 데 실패했습니다: ' + (data.message || '알 수 없는 오류'));
                     }
