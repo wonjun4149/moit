@@ -375,21 +375,171 @@ def call_meeting_matching_agent(state: MasterAgentState):
 
 # --- 전문가 2: 취미 추천 에이전트 (StateGraph 기반으로 교체) ---
 
+# [수정] 취미 추천 에이전트가 사용하는 헬퍼 함수
+def normalize(value, min_val, max_val):
+    """(기존 _normalize에서 이름 변경)"""
+    if value is None: return None
+    return round((value - min_val) / (max_val - min_val), 4)
+
+def generate_prompt(profile):
+    """[신규 추가] 사용자 프로필 딕셔너리를 받아 Gemini에게 보낼 자연어 프롬프트를 생성합니다."""
+    
+    def get_val(val, format_str="{:.2f}"):
+        if val is None: return "N/A"
+        if format_str: return format_str.format(val)
+        return val
+
+    # 프로필의 각 섹션을 안전하게 가져옵니다.
+    fsc = profile.get('FSC', {})
+    pssr = profile.get('PSSR', {})
+    mp = profile.get('MP', {})
+    dls = profile.get('DLS', {})
+    ip = profile.get('IP', {}) # ★ 관심사 프로필(IP)을 가져옵니다.
+
+    # --- 프로필 요약 ---
+    fsc_summary = (f"* **현실적 제약**: 시간({get_val(fsc.get('time_availability'))}), 예산({get_val(fsc.get('financial_budget'))}), 에너지({get_val(fsc.get('energy_level'))}), 이동성({get_val(fsc.get('mobility'))}) / 선호공간: {get_val(fsc.get('preferred_space'), format_str=None)}")
+    pssr_summary = (f"* **심리적 상태**: 사회적 불안({get_val(pssr.get('social_anxiety_score'))}), 현재 고립 수준({get_val(pssr.get('isolation_level'))}) (0:고립, 1:활발)")
+    mp_summary = (f"* **주요 동기**: 핵심 목표는 '{get_val(mp.get('core_motivation'), format_str=None)}' 입니다.")
+    dls_summary = (f"* **사회성 선호**: '{get_val(dls.get('preferred_sociality_type'), format_str=None)}' 활동을 선호합니다.")
+    
+    # --- ★★★ 이 부분이 추가되었습니다 ★★★ ---
+    # 관심사 프로필 요약 생성
+    ip_summary = (f"* **관심사 프로필** (0:관심없음, 1:매우관심): 자연({get_val(ip.get('nature_interest'))}), "
+                  f"손으로 만들기({get_val(ip.get('craft_interest'))}), "
+                  f"지적 탐구({get_val(ip.get('intellect_interest'))}), "
+                  f"예술({get_val(ip.get('art_interest'))}), "
+                  f"신체 활동({get_val(ip.get('activity_interest'))})")
+
+    # 강력한 금지 규칙 생성
+    hard_constraints = "\n# ★★★ 금지 규칙 (Hard Constraints) ★★★\n"
+    hard_constraints += "아래 규칙은 사용자의 명시적인 의사이므로, 사진의 내용과 상충되더라도 반드시 지켜야 합니다:\n"
+    
+    if ip.get('nature_interest', 0.5) < 0.3: # 0.5는 기본값, 0.3은 '관심 없음' 기준
+        hard_constraints += "- **금지**: '자연' 관련 활동 (예: 텃밭 가꾸기, 산책, 등산)은 사용자의 관심도가 매우 낮으므로 절대 추천하지 마세요.\n"
+    if ip.get('craft_interest', 0.5) < 0.3:
+        hard_constraints += "- **금지**: '손으로 만들기' 관련 활동 (예: 공예, 요리)은 절대 추천하지 마세요.\n"
+    if ip.get('intellect_interest', 0.5) < 0.3:
+        hard_constraints += "- **금지**: '지적 탐구' 관련 활동 (예: 독서, 공부)은 절대 추천하지 마세요.\n"
+    if ip.get('art_interest', 0.5) < 0.3:
+        hard_constraints += "- **금지**: '예술' 관련 활동 (예: 그림, 음악)은 절대 추천하지 마세요.\n"
+    if ip.get('activity_interest', 0.5) < 0.3:
+        hard_constraints += "- **금지**: '신체 활동' 관련 활동 (예: 운동, 춤)은 절대 추천하지 마세요.\n"
+    # --- ★★★ 여기까지 ★★★ ---
+
+
+    # 최종 프롬프트 조합
+    prompt = f"""# 페르소나 (Persona)
+당신은 사용자의 내면을 깊이 이해하고 공감하는 '디지털 치료 레크리에이션 전문가'입니다.
+
+# 컨텍스트: 사용자 프로필 (Context: User Profile)
+아래는 사용자의 현재 상태를 분석한 데이터입니다. 이 정보는 반드시 지켜야 할 가이드라인입니다.
+{fsc_summary}
+{pssr_summary}
+{mp_summary}
+{dls_summary}
+{ip_summary} 
+
+{hard_constraints}
+
+# 이미지 분석 지시 (Image Analysis Directive)
+이제 이 사용자가 '즐거웠던 순간'으로 직접 선택한 아래 사진들을 분석해 주세요. 사진 속의 명확한 사물이나 활동뿐만 아니라, 전체적인 분위기, 색감, 빛, 구도, 질감 등에서 느껴지는 감성적인 단서를 포착해 주세요.
+
+# 핵심 과제 및 결과물 형식 (Core Task & Output Format)
+위의 사용자 프로필과 이미지 분석을 종합하여, 이 사용자가 지금 바로 시작할 수 있는 맞춤형 취미 3가지를 추천해 주세요.
+각 취미는 다음 형식을 반드시 준수하여 설명해야 합니다:
+1. **취미 이름**:
+2. **추천 이유**: 왜 이 취미가 사용자의 프로필 조건(특히 금지 규칙)을 만족시키면서, 동시에 사진 속 감성과 연결되는지 설명해주세요.
+3. **부드러운 첫걸음**: 사용자가 부담 없도록, 구체적인 첫 행동을 '초대'의 언어로 제시해주세요."""
+    print("Gemini 프롬프트 생성 완료.")
+    return prompt
+
 # 2-1. 취미 추천에 사용될 도구(Tool) 정의
 @tool
-def analyze_photo_tool(image_paths: list[str]) -> str:
-    """사용자의 사진(이미지 파일 경로 리스트)을 입력받아, 그 사람의 성향, 분위기, 잠재적 관심사에 대한 텍스트 분석 결과를 반환합니다."""
-    from PIL import Image
+def analyze_survey_tool(survey_json_string: str) -> dict:
+    """[수정] 사용자의 설문 응답(JSON 문자열)을 입력받아, IP 프로필이 포함된 수치적 성향 프로필(딕셔너리)을 반환합니다."""
+    logging.info("--- 📊 '설문 분석 전문가'가 작업을 시작합니다. (IP 프로필 포함) ---")
+    try:
+        responses = json.loads(survey_json_string)
 
+        # --- 새로운 calculate_user_profile_normalized 로직 시작 ---
+        
+        # features 딕셔너리에 'IP' (Interest Profile) 키를 추가합니다.
+        features = {'FSC': {}, 'PSSR': {}, 'MP': {}, 'DLS': {}, 'IP': {}}
+        
+        def to_int(q_num_str):
+            return responses.get(q_num_str)
+
+        # --- FSC (기존과 동일) ---
+        features['FSC']['time_availability'] = normalize(to_int('1'), 1, 4)
+        features['FSC']['financial_budget'] = normalize(to_int('2'), 1, 4)
+        features['FSC']['energy_level'] = normalize(to_int('3'), 1, 5)
+        features['FSC']['mobility'] = normalize(to_int('4'), 1, 5)
+        features['FSC']['has_physical_constraints'] = True if to_int('5') in [1, 2, 3] else False
+        features['FSC']['has_housing_constraints'] = True if to_int('12') in [2, 3, 4] else False
+        features['FSC']['preferred_space'] = 'indoor' if to_int('6') == 1 else 'outdoor'
+
+        # --- PSSR (기존과 동일) ---
+        q13 = to_int('13') or 3; q14_r = 6 - (to_int('14') or 3); q16 = to_int('16') or 3
+        self_criticism_raw = (q13 + q14_r + q16) / 3
+        features['PSSR']['self_criticism_score'] = normalize(self_criticism_raw, 1, 5)
+        q15 = to_int('15') or 3; q18 = to_int('18') or 3; q20 = to_int('20') or 3
+        social_anxiety_raw = (q15 + q18 + q20) / 3
+        features['PSSR']['social_anxiety_score'] = normalize(social_anxiety_raw, 1, 5)
+        features['PSSR']['isolation_level'] = normalize(to_int('21'), 1, 5)
+        features['PSSR']['structure_preference_score'] = normalize(to_int('27'), 1, 5)
+        features['PSSR']['avoidant_coping_score'] = normalize(to_int('29'), 1, 5)
+
+        # --- MP (한국어 값으로 업데이트) ---
+        motivation_map = {1: '성취', 2: '회복', 3: '연결', 4: '활력'}
+        features['MP']['core_motivation'] = motivation_map.get(to_int('31'))
+        features['MP']['value_profile'] = {'knowledge': normalize(to_int('33'), 1, 5), 'stability': normalize(to_int('34'), 1, 5),'relationship': normalize(to_int('35'), 1, 5), 'health': normalize(to_int('36'), 1, 5),'creativity': normalize(to_int('37'), 1, 5), 'control': normalize(to_int('38'), 1, 5),}
+        features['MP']['process_orientation_score'] = normalize(6 - (to_int('41') or 3), 1, 5)
+
+        # --- DLS (한국어 값으로 업데이트) ---
+        sociality_map = {1: '단독형', 2: '병렬형', 3: '저강도 상호작용형', 4: '고강도 상호작용형'}
+        features['DLS']['preferred_sociality_type'] = sociality_map.get(to_int('39'))
+        group_size_map = {1: '1:1', 2: '소규모 그룹', 3: '대규모 그룹'}
+        features['DLS']['preferred_group_size'] = group_size_map.get(to_int('40'))
+        features['DLS']['autonomy_preference_score'] = normalize(to_int('42'), 1, 5)
+        
+        # --- ★★★ 추가된 IP (Interest Profile) 로직 ★★★ ---
+        features['IP']['nature_interest'] = normalize(to_int('43'), 1, 5)
+        features['IP']['craft_interest'] = normalize(to_int('44'), 1, 5)
+        features['IP']['intellect_interest'] = normalize(to_int('45'), 1, 5)
+        features['IP']['art_interest'] = normalize(to_int('46'), 1, 5)
+        features['IP']['activity_interest'] = normalize(to_int('47'), 1, 5)
+        # --- ★★★ 여기까지 ★★★ ---
+        
+        logging.info("--- ✅ 설문 분석이 성공적으로 완료되었습니다. ---")
+        return features
+    except Exception as e:
+        logging.error(f"설문 분석 중 오류 발생: {e}", exc_info=True)
+        return {"error": f"설문 분석 중 오류가 발생했습니다: {e}"}
+
+@tool
+def analyze_photo_tool(image_paths: list[str], survey_profile: dict) -> str:
+    """[수정] 사용자의 사진(image_paths)과 설문 프로필(survey_profile)을 모두 입력받아,
+    두 정보를 종합하여 최종 취미 추천 메시지를 생성하고 반환합니다."""
+    from PIL import Image
+    
+    # 1. 프로필을 기반으로 Gemini에게 보낼 프롬프트를 생성합니다.
+    try:
+        prompt_text = generate_prompt(survey_profile)
+    except Exception as e:
+        logging.error(f"프로필 기반 프롬프트 생성 중 오류 발생: {e}", exc_info=True)
+        return f"오류: 사용자 프로필로 프롬프트를 생성하는 데 실패했습니다: {e}"
+
+    # 2. 이미지가 있는지 확인합니다.
     if not image_paths:
         logging.info("--- 🖼️ 분석할 사진이 없어 사진 분석 단계를 건너뜁니다. ---")
-        return "사용자가 제공한 사진이 없습니다."
-    try:
-        logging.info(f"--- 📸 '사진 분석 전문가'가 작업을 시작합니다. (이미지 {len(image_paths)}개) ---")
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        photo_analysis_prompt_text = "당신은 사람들의 일상 사진을 보고, 그 사람의 잠재적인 관심사와 성향을 추측하는 심리 분석가입니다. [분석할 사진] 아래 제공된 사진들 [지시사항] 1. 사진들 속 인물, 사물, 배경, 분위기를 종합적으로 분석하세요. 2. 사진 분석 결과를 바탕으로, 이 사람의 성향과 잠재적인 관심사를 3~4개의 핵심 키워드와 함께 설명해주세요. 3. 최종 결과는 다른 AI가 이해하기 쉽도록 간결한 분석 보고서 형식으로 작성해주세요."
-        
+        # 사진이 없어도, 설문 기반 추천은 가능하므로 프롬프트만 전달합니다.
+        image_parts = ["\n# 추가 정보: 사용자가 제공한 사진이 없습니다."]
+    else:
+        logging.info(f"--- 📸 '디지털 치료 레크리에이션 전문가'가 작업을 시작합니다. (이미지 {len(image_paths)}개) ---")
         image_parts = []
+
+    # 3. 이미지 파일을 처리합니다.
+    try:
         for path in image_paths:
             try:
                 img = Image.open(path)
@@ -406,77 +556,25 @@ def analyze_photo_tool(image_paths: list[str]) -> str:
                     logging.warning(f"지원하지 않는 이미지 형식({img.format})을 건너뜁니다: {path}")
             except Exception as img_e:
                 logging.warning(f"이미지 파일을 여는 데 실패하여 건너뜁니다: {path}, 오류: {img_e}")
-
-        response = model.generate_content([photo_analysis_prompt_text] + image_parts)
-        logging.info("--- ✅ 사진 분석이 성공적으로 완료되었습니다. ---")
+        
+        # 4. Gemini 모델을 호출합니다.
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        # [수정] generate_prompt로 생성한 프롬프트와 이미지 파트를 함께 전달
+        response = model.generate_content([prompt_text] + image_parts) 
+        
+        logging.info("--- ✅ 최종 추천 메시지 생성이 성공적으로 완료되었습니다. ---")
         return response.text
     except Exception as e:
-        logging.error(f"사진 분석 중 오류 발생: {e}", exc_info=True)
-        return f"오류: 사진 분석 중 문제가 발생했습니다: {e}"
+        logging.error(f"Gemini 추천 생성 중 오류 발생: {e}", exc_info=True)
+        return f"오류: Gemini를 통한 최종 추천 생성 중 문제가 발생했습니다: {e}"
 
-def _normalize(value, min_val, max_val):
-    if value is None: return None
-    return round((value - min_val) / (max_val - min_val), 4)
-
-@tool
-def analyze_survey_tool(survey_json_string: str) -> dict:
-    """사용자의 설문 응답(JSON 문자열)을 입력받아, 수치적으로 정규화된 성향 프로필(딕셔너리)을 반환합니다."""
-    logging.info("--- 📊 '설문 분석 전문가'가 작업을 시작합니다. ---")
-    try:
-        responses = json.loads(survey_json_string)
-        features = {'FSC': {}, 'PSSR': {}, 'MP': {}, 'DLS': {}}
-        features['FSC']['time_availability'] = _normalize(responses.get('1'), 1, 4)
-        features['FSC']['financial_budget'] = _normalize(responses.get('2'), 1, 4)
-        features['FSC']['energy_level'] = _normalize(responses.get('3'), 1, 5)
-        features['FSC']['mobility'] = _normalize(responses.get('4'), 1, 5)
-        features['FSC']['has_physical_constraints'] = True if responses.get('5') in [1, 2, 3] else False
-        features['FSC']['has_housing_constraints'] = True if responses.get('12') in [2, 3, 4] else False
-        features['FSC']['preferred_space'] = 'indoor' if responses.get('6') == 1 else 'outdoor'
-        q13 = responses.get('13', 3); q14_r = 6 - responses.get('14', 3); q16 = responses.get('16', 3)
-        self_criticism_raw = (q13 + q14_r + q16) / 3
-        features['PSSR']['self_criticism_score'] = _normalize(self_criticism_raw, 1, 5)
-        q15 = responses.get('15', 3); q18 = responses.get('18', 3); q20 = responses.get('20', 3)
-        social_anxiety_raw = (q15 + q18 + q20) / 3
-        features['PSSR']['social_anxiety_score'] = _normalize(social_anxiety_raw, 1, 5)
-        features['PSSR']['isolation_level'] = _normalize(responses.get('21'), 1, 5)
-        features['PSSR']['structure_preference_score'] = _normalize(responses.get('27'), 1, 5)
-        features['PSSR']['avoidant_coping_score'] = _normalize(responses.get('29'), 1, 5)
-        motivation_map = {1: 'achievement', 2: 'recovery', 3: 'connection', 4: 'vitality'}
-        features['MP']['core_motivation'] = motivation_map.get(responses.get('31'))
-        features['MP']['value_profile'] = {'knowledge': _normalize(responses.get('33'), 1, 5),'stability': _normalize(responses.get('34'), 1, 5),'relationship': _normalize(responses.get('35'), 1, 5),'health': _normalize(responses.get('36'), 1, 5),'creativity': _normalize(responses.get('37'), 1, 5),'control': _normalize(responses.get('38'), 1, 5),}
-        features['MP']['process_orientation_score'] = _normalize(6 - responses.get('41', 3), 1, 5)
-        sociality_map = {1: 'solo', 2: 'parallel', 3: 'low_interaction_group', 4: 'high_interaction_group'}
-        features['DLS']['preferred_sociality_type'] = sociality_map.get(responses.get('39'))
-        group_size_map = {1: 'one_on_one', 2: 'small_group', 3: 'large_group'}
-        features['DLS']['preferred_group_size'] = group_size_map.get(responses.get('40'))
-        features['DLS']['autonomy_preference_score'] = _normalize(responses.get('42'), 1, 5)
-        logging.info("--- ✅ 설문 분석이 성공적으로 완료되었습니다. ---")
-        return features
-    except Exception as e:
-        logging.error(f"설문 분석 중 오류 발생: {e}", exc_info=True)
-        return {"error": f"설문 분석 중 오류가 발생했습니다: {e}"}
-
-@tool
-def summarize_survey_profile_tool(survey_profile: dict) -> str:
-    """'analyze_survey_tool'로부터 받은 정량적인 사용자 프로필(딕셔너리)을 입력받아, 사람이 이해하기 쉬운 텍스트 요약 보고서로 변환합니다."""
-    logging.info("--- ✍️ '설문 요약 전문가'가 작업을 시작합니다. ---")
-    try:
-        summarizer_prompt = ChatPromptTemplate.from_template("당신은 사용자의 성향 분석 데이터를 해석하여, 핵심적인 특징을 요약하는 프로파일러입니다. 아래 <사용자 프로필 데이터>를 보고, 이 사람의 성향을 한두 문단의 자연스러운 문장으로 요약해주세요.\n<사용자 프로필 데이터>\n{profile}\n[데이터 항목 설명] - FSC: 현실적인 제약 조건, PSSR: 심리적 상태, MP: 활동 동기, DLS: 선호하는 사회성\n[요약 예시] '이 사용자는 현재 시간과 예산, 에너지 등 현실적인 제약이 크며, 사회적 불안감이 높아 혼자만의 활동을 통해 회복과 안정을 얻고 싶어하는 성향이 강하게 나타납니다.' 와 같이 간결하게 작성해주세요.")
-        summarizer_chain = summarizer_prompt | llm | StrOutputParser()
-        summary = summarizer_chain.invoke({"profile": survey_profile})
-        logging.info("--- ✅ 설문 요약이 성공적으로 완료되었습니다. ---")
-        return summary
-    except Exception as e:
-        logging.error(f"설문 요약 중 오류 발생: {e}", exc_info=True)
-        return f"오류: 설문 요약 중 문제가 발생했습니다: {e}"
-
-# 2-2. 취미 추천 StateGraph 정의
+# 2-2. 취미 추천 StateGraph 정의 [수정]
 class HobbyAgentState(TypedDict):
     survey_data: dict
     image_paths: List[str]
     survey_profile: dict
-    survey_summary: str
-    photo_analysis: str
+    # [삭제] survey_summary: str
+    # [삭제] photo_analysis: str
     final_recommendation: str
 
 def analyze_survey_node(state: HobbyAgentState):
@@ -485,63 +583,29 @@ def analyze_survey_node(state: HobbyAgentState):
     survey_profile = analyze_survey_tool.invoke({"survey_json_string": survey_json_string})
     return {"survey_profile": survey_profile}
 
-def summarize_survey_node(state: HobbyAgentState):
-    """정량 프로필을 텍스트로 요약하는 노드"""
-    survey_summary = summarize_survey_profile_tool.invoke({"survey_profile": state["survey_profile"]})
-    return {"survey_summary": survey_summary}
-
 def analyze_photo_node(state: HobbyAgentState):
-    """사진을 분석하는 노드"""
-    photo_analysis = analyze_photo_tool.invoke({"image_paths": state.get("image_paths", [])})
-    return {"photo_analysis": photo_analysis}
-
-def generate_final_recommendation_node(state: HobbyAgentState):
-    """모든 분석 결과를 종합하여 최종 추천 메시지를 생성하는 노드"""
-    logging.info("--- 🏁 '최종 추천 전문가'가 작업을 시작합니다. ---")
-    final_prompt_template = """당신은 사용자의 다양한 정보를 종합하여 맞춤형 취미를 추천하는 AI 큐레이터입니다.
-아래 제공된 두 가지 분석 보고서를 바탕으로, 사용자에게 감동을 주는 최종 추천 메시지를 작성해주세요.
-
-[분석 보고서 1: 내면 성향 분석 (설문 기반)]
-{survey_summary}
-
-[분석 보고서 2: 외면 활동성 분석 (사진 기반)]
-{photo_analysis}
-
-[작성 지침]
-1.  **분석 결과 요약**: 먼저, 두 분석 보고서의 핵심 내용을 사용자에게 친절하게 요약하여 전달합니다. 다음과 같은 형식으로 시작해주세요.
-    - "설문 분석 결과, OOO님은 ...한 성향을 가지고 계시는군요."
-    - "올려주신 사진들을 분석해보니, ...한 모습이 돋보이네요."
-2.  **종합 분석 및 해석**: 두 보고서를 종합하여 사용자의 성향을 입체적으로 파악합니다. 만약 두 보고서의 내용이 서로 상반될 경우(예: 설문은 '내향적', 사진은 '외향적'), 이 차이점을 반드시 언급하며 "내면의 성향과 달리 실제 생활에서는 활기찬 모습도 있으시네요!" 와 같이 긍정적으로 해석해주세요.
-3.  **취미 추천**: 종합적인 분석을 바탕으로, 사용자에게 가장 적합해 보이는 취미 3가지를 추천합니다.
-4.  **추천 이유 설명**: 각 취미를 추천하는 이유를 두 보고서의 내용을 근거로 들어 설득력 있게 설명해주세요.
-5.  **답변 형식**: 최종 답변은 반드시 사용자에게 직접 말하는 것처럼, 친절하고 따뜻한 말투의 추천 메시지 형식으로 작성해주세요.
-"""
-    final_prompt = ChatPromptTemplate.from_template(final_prompt_template)
-    final_chain = final_prompt | llm | StrOutputParser()
-    final_recommendation = final_chain.invoke({
-        "survey_summary": state["survey_summary"],
-        "photo_analysis": state["photo_analysis"]
+    """[수정] 사진과 설문 프로필을 종합하여 최종 추천을 생성하는 노드"""
+    final_recommendation = analyze_photo_tool.invoke({
+        "image_paths": state.get("image_paths", []),
+        "survey_profile": state["survey_profile"]
     })
-    logging.info("--- ✅ 최종 추천 메시지 생성이 완료되었습니다. ---")
     return {"final_recommendation": final_recommendation}
 
-# 2-3. 취미 추천 StateGraph 컴파일
+# 2-3. 취미 추천 StateGraph 컴파일 [수정]
 hobby_graph_builder = StateGraph(HobbyAgentState)
 hobby_graph_builder.add_node("analyze_survey", analyze_survey_node)
-hobby_graph_builder.add_node("summarize_survey", summarize_survey_node)
-hobby_graph_builder.add_node("analyze_photo", analyze_photo_node)
-hobby_graph_builder.add_node("generate_final_recommendation", generate_final_recommendation_node)
+hobby_graph_builder.add_node("analyze_photo_and_recommend", analyze_photo_node) # [수정] 노드 이름 변경
+
 hobby_graph_builder.set_entry_point("analyze_survey")
-hobby_graph_builder.add_edge("analyze_survey", "summarize_survey")
-hobby_graph_builder.add_edge("summarize_survey", "analyze_photo")
-hobby_graph_builder.add_edge("analyze_photo", "generate_final_recommendation")
-hobby_graph_builder.add_edge("generate_final_recommendation", END)
+hobby_graph_builder.add_edge("analyze_survey", "analyze_photo_and_recommend") # [수정] 엣지 연결
+hobby_graph_builder.add_edge("analyze_photo_and_recommend", END) # [수정] 엣지 연결
+
 hobby_supervisor_agent = hobby_graph_builder.compile()
 
 # 2-4. 마스터 에이전트가 호출할 함수
 def call_multimodal_hobby_agent(state: MasterAgentState):
     """'StateGraph 기반 취미 추천 에이전트'를 호출하고 결과를 받아오는 노드"""
-    logging.info("--- CALLING: StateGraph Hobby Supervisor Agent ---")
+    logging.info("--- CALLING: StateGraph Hobby Supervisor Agent (IP Profile Ver.) ---")
 
     user_input = state["user_input"]
     survey_data = user_input.get("survey", {})
