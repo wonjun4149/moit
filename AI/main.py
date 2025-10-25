@@ -148,9 +148,7 @@ def call_general_search_agent(state: MasterAgentState):
     # 1-3. 오늘 날짜 확인 도구
     get_current_date_tool = get_current_date
     tools = [web_search_with_retry, moit_meeting_retriever_tool]
-
-    tools = [tavily_tool, moit_meeting_retriever_tool, get_current_date_tool]
-
+ 
     # 2. ReAct 에이전트 생성
     # [중요] ReAct 프롬프트에 에이전트의 역할과 도구 사용법을 명확히 지시합니다.
     react_prompt = ChatPromptTemplate.from_messages(
@@ -169,14 +167,10 @@ def call_general_search_agent(state: MasterAgentState):
             """),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}"), # "user_input" 대신 "input" 사용
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-            MessagesPlaceholder(variable_name="chat_history", optional=True),
-            ("human", "{input}"),
             MessagesPlaceholder(variable_name="agent_scratchpad")
         ]
     )
     
-    general_agent_runnable = create_react_agent(llm, tools, react_prompt)
     agent = create_openai_tools_agent(llm, tools, react_prompt)
     general_agent_runnable = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
@@ -190,13 +184,8 @@ def call_general_search_agent(state: MasterAgentState):
         user_question = str(state['user_input'])
 
     input_data = {"input": user_question, "chat_history": []} # chat_history 추가
-    logging.info(f"범용 검색 에이전트에게 전달된 질문: {user_question}") # 로깅 수정
-    logging.info(f"general_agent_runnable.invoke에 전달되는 입력: {input_data}") # 로깅 추가
-
-    result = general_agent_runnable.invoke(input_data) # input_data를 사용하여 호출
     logging.info(f"범용 검색 에이전트에게 전달된 질문: {user_question}")
-    
-    result = general_agent_runnable.invoke({"input": user_question})
+    result = general_agent_runnable.invoke(input_data) # input_data를 사용하여 호출
     
     final_answer = result.get("output", "질문을 이해하지 못했습니다. 다시 질문해주세요.")
     logging.info(f"범용 검색 에이전트의 최종 답변: {final_answer}")
@@ -452,8 +441,9 @@ def generate_prompt(profile):
 
 # 2-1. 취미 추천에 사용될 도구(Tool) 정의
 @tool
-def analyze_survey_tool(survey_json_string: str) -> dict:
-    """[수정] 사용자의 설문 응답(JSON 문자열)을 입력받아, IP 프로필이 포함된 수치적 성향 프로필(딕셔너리)을 반환합니다."""
+def analyze_photo_tool(image_paths: list[str], survey_profile: dict) -> str:
+    """[수정] 사용자의 사진(image_paths)과 설문 프로필(survey_profile)을 모두 입력받아,
+    두 정보를 종합하여 최종 취미 추천 메시지를 생성하고 반환합니다."""
     from PIL import Image
     
     # 1. 프로필을 기반으로 Gemini에게 보낼 프롬프트를 생성합니다.
@@ -464,7 +454,7 @@ def analyze_survey_tool(survey_json_string: str) -> dict:
         return f"오류: 사용자 프로필로 프롬프트를 생성하는 데 실패했습니다: {e}"
 
     # 2. 이미지가 있는지 확인합니다.
-    if not image_paths:
+    if not image_paths or not any(p for p in image_paths):
         logging.info("--- 🖼️ 분석할 사진이 없어 사진 분석 단계를 건너뜁니다. ---")
         # 사진이 없어도, 설문 기반 추천은 가능하므로 프롬프트만 전달합니다.
         image_parts = ["\n# 추가 정보: 사용자가 제공한 사진이 없습니다."]
@@ -504,7 +494,6 @@ def analyze_survey_tool(survey_json_string: str) -> dict:
 
 @tool
 def analyze_survey_tool(survey_json_string: str) -> dict:
-    """[수정] 사용자의 설문 응답(JSON 문자열)을 입력받아, IP 프로필이 포함된 수치적 성향 프로필(딕셔너리)을 반환합니다."""
     logging.info("--- 📊 '설문 분석 전문가'가 작업을 시작합니다. (IP 프로필 포함) ---")
     try:
         responses = json.loads(survey_json_string)
@@ -564,14 +553,6 @@ def analyze_survey_tool(survey_json_string: str) -> dict:
         logging.error(f"설문 분석 중 오류 발생: {e}", exc_info=True)
         return {"error": f"설문 분석 중 오류가 발생했습니다: {e}"}
 
-@tool
-def analyze_photo_tool(image_paths: list[str], survey_profile: dict) -> str:
-    """[수정] 사용자의 사진(image_paths)과 설문 프로필(survey_profile)을 모두 입력받아,
-    두 정보를 종합하여 최종 취미 추천 메시지를 생성하고 반환합니다."""
-    # 이 함수는 새로운 로직에서 analyze_survey_tool과 generate_prompt 뒤에 호출됩니다.
-    # 위에서 이미 정의되었으므로, 여기서는 추가적인 정의가 필요 없습니다.
-    # 이 tool 데코레이터는 StateGraph에서 사용하기 위해 존재합니다.
-    pass
 
 class HobbyAgentState(TypedDict):
     survey_data: dict
