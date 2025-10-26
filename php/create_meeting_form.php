@@ -57,8 +57,8 @@ $site_title = "MOIT - 새 모임 만들기";
                 <div class="form-group">
                      <label>날짜 및 시간</label>
                      <div class="datetime-group">
-                         <input type="date" id="create-date" name="meeting_date" required>
-                         <input type="time" id="create-time" name="meeting_time" required>
+                        <input type="date" id="create-date" name="meeting_date" required>
+                        <input type="time" id="create-time" name="meeting_time" required>
                     </div>
                 </div>
 
@@ -112,9 +112,6 @@ $site_title = "MOIT - 새 모임 만들기";
         let isSubmitting = false; // 중복 제출 방지 플래그
 
         if (createMeetingForm) {
-            // [수정 1/4] '생성하기' 버튼을 폼 스코프에서 미리 찾아둡니다.
-            const submitButton = createMeetingForm.querySelector('button[type="submit"]');
-
             createMeetingForm.addEventListener('submit', function(event) {
                 event.preventDefault(); // 기본 폼 제출 중단
 
@@ -138,12 +135,6 @@ $site_title = "MOIT - 새 모임 만들기";
                 }
 
                 isSubmitting = true; // 제출 시작
-                
-                // [수정 2/4] 버튼 텍스트를 '분석중...'으로 변경하고 비활성화합니다.
-                if (submitButton) {
-                    submitButton.textContent = '분석중...';
-                    submitButton.disabled = true;
-                }
 
                 const formData = new FormData(this);
 
@@ -166,12 +157,6 @@ $site_title = "MOIT - 새 모임 만들기";
                 })
                 .finally(() => {
                     isSubmitting = false; // 제출 플래그 리셋
-                    
-                    // [수정 3/4] 버튼 텍스트를 '생성하기'로 되돌리고 활성화합니다.
-                    if (submitButton) {
-                        submitButton.textContent = '생성하기';
-                        submitButton.disabled = false;
-                    }
                 });
             });
         }
@@ -199,11 +184,6 @@ $site_title = "MOIT - 새 모임 만들기";
         });
 
         forceCreateBtn.addEventListener('click', () => {
-            // [수정 4/4] '그래도 새로 만들기' 클릭 시 버튼이 비활성화된 상태일 수 있으므로 활성화합니다.
-            const submitButton = createMeetingForm.querySelector('button[type="submit"]');
-            if (submitButton) {
-                submitButton.disabled = false; 
-            }
             createMeetingForm.submit();
         });
 
