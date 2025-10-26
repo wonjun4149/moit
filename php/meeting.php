@@ -78,25 +78,25 @@ try {
                     
                    <div class="category-filters">
                     <button class="filter-btn active" data-category="전체">
-                        <span role="img" aria-label="전체">🌐</span> # 전체
+                        <span role="img" aria-label="전체">🌐</span>  전체
                     </button>
                     <button class="filter-btn" data-category="취미 및 여가">
-                        <span role="img" aria-label="취미">🎨</span> # 취미 및 여가
+                        <span role="img" aria-label="취미">🎨</span>  취미 및 여가
                     </button>
                     <button class="filter-btn" data-category="운동">
-                        <span role="img" aria-label="운동">⚽</span> # 운동
+                        <span role="img" aria-label="운동">⚽</span>  운동
                     </button>
                     <button class="filter-btn" data-category="스터디">
-                        <span role="img" aria-label="스터디">📚</span> # 스터디
+                        <span role="img" aria-label="스터디">📚</span> 스터디
                     </button>
                     <button class="filter-btn" data-category="문화">
-                        <span role="img" aria-label="문화">🎭</span> # 문화
+                        <span role="img" aria-label="문화">🎭</span>  문화
                     </button>
                     <button class="filter-btn" data-category="봉사활동">
-                        <span role="img" aria-label="봉사">🤝</span> # 봉사활동
+                        <span role="img" aria-label="봉사">🤝</span>  봉사활동
                     </button>
                     </div>
-                        <button id="show-more-btn">v 더보기</button>
+                        <button id="show-more-btn"> 더보기</button>
                     </div>
                     <div class="sorting-options">
                         <a href="#" class="sort-link active" data-sort="latest">최신순</a>
