@@ -347,18 +347,18 @@ debug_output("최종 상태", [
                     // [수정됨] 오른쪽 섹션 대신 모달 창에 결과 표시
                     // ===============================================
                     if (data.success && data.recommendation) {
-                        const modalOverlay = document.getElementById('recommendation-modal-overlay');
-                        const recommendationContent = document.getElementById('recommendation-content');
-                        
-                        if (modalOverlay && recommendationContent) {
-                            // \n (줄바꿈)을 <br> 태그로 변경하여 HTML에 삽입
-                            recommendationContent.innerHTML = data.recommendation.replace(/\n/g, '<br>');
-                            // 모달 창을 띄웁니다.
-                            modalOverlay.style.display = 'flex'; 
-                        } else {
-                            console.error('모달 요소를 찾을 수 없습니다.');
-                            alert('결과를 표시하는 데 오류가 발생했습니다.');
-                        }
+                        // 성공적으로 결과를 받으면 오른쪽 섹션을 업데이트합니다.
+                        const rightSection = document.querySelector('.right-section');
+                        rightSection.innerHTML = `
+                            <div class="recommendations-container">
+                                <h3>🎉 맞춤 취미 추천 결과</h3>
+                                <div class="ai-recommendation-box" style="margin-top: 20px;">
+                                    ${data.recommendation.replace(/\n/g, '<br>')}
+                                </div>
+                                <div class="survey-actions">
+                                    <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
+                                </div>
+                            </div>`;
                     } else {
                         alert('추천을 생성하는 데 실패했습니다: ' + (data.message || '알 수 없는 오류'));
                     }
