@@ -1,1485 +1,760 @@
 /* 기본 설정 */
-
 * {
-
     margin: 0;
-
     padding: 0;
-
     box-sizing: border-box;
-
 }
-
-
 
 /* General Body and Main Container */
-
 body {
-
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-
     margin: 0;
-
     background-color: #ffffff; /* 배경 흰색으로 변경 */
-
     color: #333;
-
 }
-
-
 
 .main-container {
-
     margin-top: 70px;
-
     display: flex;
-
     justify-content: center;
-
     padding: 40px 20px; /* 패딩 조정 */
-
     box-sizing: border-box;
-
     min-height: calc(100vh - 70px);
-
     line-height: 1.6;
-
 }
-
-
 
 .content-wrapper {
-
     display: flex;
-
     width: 100%;
-
     max-width: 1200px;
-
     gap: 40px; /* 간격 조정 */
-
 }
-
-
 
 /* Left Section - Meeting Cards */
-
 .left-section {
-
     flex: 3;
-
     background-color: transparent; /* 배경 제거 */
-
     padding: 0; /* 패딩 제거 */
-
     border-radius: 0;
-
     box-shadow: none;
-
 }
-
-
 
 .left-section h2 {
-
     font-size: 2em; /* 폰트 크기 조정 */
-
     color: #000; /* 폰트 색상 변경 */
-
     margin-bottom: 20px;
-
     border-bottom: none; /* 밑줄 제거 */
-
     padding-bottom: 0;
-
     font-weight: 600;
-
 }
-
-
 
 /* --- 신규 스타일: 카테고리 필터 --- */
-
 .category-filters {
-
     display: flex;
-
     flex-wrap: wrap;
-
     gap: 10px;
-
     margin-bottom: 20px;
-
 }
-
-
 
 .filter-btn {
-
-    /* ========== 수정된 부분 시작 ========== */
-
     display: inline-flex;
-
     align-items: center;
-
-    /* ========== 수정된 부분 끝 ========== */
-
     padding: 8px 16px;
-
     border: 1px solid #e0e0e0;
-
     border-radius: 20px;
-
     background-color: #fff;
-
     color: #555;
-
     cursor: pointer;
-
     font-size: 0.95em;
-
     transition: all 0.2s ease;
-
 }
 
-
-
-/* ========== 추가된 부분 시작 ========== */
-
+/* [원래대로 복구] 이미지 아이콘 스타일 */
 .tag-icon {
-
     width: 20px;
-
     height: 20px;
-
     margin-right: 5px;
-
 }
-
-/* ========== 추가된 부분 끝 ========== */
-
-
 
 .filter-btn:hover {
-
     background-color: #f5f5f5;
-
     border-color: #ccc;
-
 }
-
-
 
 .filter-btn.active {
-
     background-color: #333;
-
     color: #fff;
-
     border-color: #333;
-
     font-weight: bold;
-
 }
 
-
-
-/* --- 신규 스타일: 정렬 옵션 --- */
-
+/* --- [수정됨] 신규 스타일: 정렬 옵션 --- */
 .sorting-options {
-
-    text-align: right;
-
+    display: flex; /* Flexbox 레이아웃 사용 */
+    justify-content: flex-end; /* 오른쪽 정렬 */
+    gap: 10px; /* 버튼 사이 간격 */
     margin-bottom: 20px;
-
+    align-items: center; /* 수직 중앙 정렬 */
 }
-
-
 
 .sort-link {
-
-    color: #888;
-
+    display: inline-block; /* 버튼 형태로 표시 */
+    padding: 6px 14px; /* 내부 여백 */
+    border: 1px solid #e0e0e0; /* 테두리 */
+    border-radius: 16px; /* 둥근 모서리 */
+    background-color: #fff; /* 배경색 */
+    color: #555; /* 글자색 */
     text-decoration: none;
-
-    margin-left: 15px;
-
     font-size: 0.9em;
-
+    font-weight: 500; /* 글자 두께 */
+    transition: all 0.2s ease;
+    cursor: pointer; /* 마우스 커서 변경 */
 }
 
-
+.sort-link:hover {
+    background-color: #f5f5f5;
+    border-color: #ccc;
+    color: #333; /* 호버 시 글자색 */
+}
 
 .sort-link.active {
-
-    color: #000;
-
+    background-color: #333;
+    color: #fff;
+    border-color: #333;
     font-weight: bold;
-
 }
-
+/* --- 정렬 옵션 수정 끝 --- */
 
 
 #show-more-btn {
-
     padding: 8px 16px;
-
     border: 1px solid #e0e0e0;
-
     border-radius: 20px;
-
     background-color: #fff;
-
     color: #555;
-
     cursor: pointer;
-
     font-size: 0.95em;
-
     transition: all 0.2s ease;
-
 }
-
-
 
 #show-more-btn:hover {
-
     background-color: #f5f5f5;
-
     border-color: #ccc;
-
 }
-
-
-
 
 
 .meeting-cards {
-
     display: grid;
-
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* 카드 최소 너비 조정 */
-
     gap: 25px;
-
 }
-
-
 
 .meeting-card-link {
-
     text-decoration: none;
-
     color: inherit;
-
 }
-
-
 
 /* Meeting Card 수정 */
-
 .meeting-card {
-
     background-color: #ffffff;
-
     border-radius: 8px; /* border-radius 조정 */
-
     overflow: hidden;
-
     box-shadow: none; /* 그림자 제거 */
-
     border: 1px solid #f0f0f0; /* 옅은 테두리 추가 */
-
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-
     display: flex;
-
     flex-direction: column;
-
     cursor: pointer; /* 커서 포인터 추가 */
-
 }
-
-
 
 .meeting-card:hover {
-
     transform: translateY(-5px);
-
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); /* 호버 시 그림자 */
-
 }
-
-
 
 .meeting-card:hover .card-image img {
-
     transform: scale(1.05); /* 호버 시 이미지 살짝 확대 */
-
 }
-
-
 
 .card-image {
-
     width: 100%;
-
     height: 180px; /* 높이 조정 */
-
     overflow: hidden;
-
 }
-
-
 
 .card-image img {
-
     width: 100%;
-
     height: 100%;
-
     object-fit: cover;
-
     transition: transform 0.3s ease; /* 호버 효과를 위해 추가 */
-
 }
-
-
 
 .card-content {
-
     padding: 15px; /* 패딩 조정 */
-
     flex-grow: 1;
-
 }
-
-
 
 .card-title {
-
     font-size: 1.2em; /* 폰트 크기 조정 */
-
     color: #000;
-
     margin: 0 0 8px 0;
-
     line-height: 1.4;
-
     font-weight: 600;
-
 }
-
-
 
 .card-description-short {
-
     font-size: 0.9em; /* 폰트 크기 조정 */
-
     color: #666;
-
     margin-bottom: 15px;
-
-    flex-grow: 1;
-
+    flex-grow: 1; 
 }
-
-
 
 .card-details {
-
     display: flex;
-
     flex-direction: column; /* 세로 정렬 */
-
     gap: 5px; /* 간격 조정 */
-
     margin-top: auto;
-
     padding-top: 10px;
-
     border-top: none; /* 상단 선 제거 */
-
 }
-
-
 
 .detail-item {
-
     font-size: 0.85em; /* 폰트 크기 조정 */
-
     color: #888;
-
 }
-
-
 
 /* Right Section 수정 */
-
 .right-section {
-
     flex: 1;
-
     max-width: 300px; /* 최대 너비 지정 */
-
 }
-
-
 
 .btn-create-meeting {
-
     display: block;
-
     width: 100%;
-
     padding: 15px 25px;
-
     background-color: #007bff; /* 파란색 계열로 변경 */
-
     color: #ffffff;
-
     border: none;
-
     border-radius: 8px;
-
     font-size: 1.1em;
-
     font-weight: bold;
-
     cursor: pointer;
-
     transition: background-color 0.2s ease;
-
     box-shadow: none;
-
     margin-bottom: 20px;
-
     text-align: center;
-
     text-decoration: none;
-
 }
-
-
 
 .btn-create-meeting:hover {
-
     background-color: #0056b3;
-
 }
-
-
 
 .search-box {
-
     background-color: #f9f9f9;
-
     padding: 20px;
-
     border-radius: 8px;
-
     border: 1px solid #f0f0f0;
-
 }
-
-
 
 .search-box h3 {
-
     font-size: 1.2em;
-
     color: #333;
-
     margin-top: 0;
-
     margin-bottom: 15px;
-
 }
-
-
 
 .search-input-wrapper {
-
     position: relative;
-
     display: flex;
-
     align-items: center;
-
     background-color: #fff;
-
     border: 1px solid #ddd;
-
     border-radius: 8px; /* Rounded rectangle */
-
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
-
 }
-
-
 
 .search-input-wrapper:focus-within {
-
     border-color: #007bff;
-
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-
 }
-
-
 
 #search-input {
-
     border: none;
-
     outline: none;
-
     flex-grow: 1;
-
     padding: 15px;
-
     font-size: 1em;
-
     background-color: transparent;
-
     padding-right: 60px; /* Make space for the button */
-
 }
-
-
 
 #search-button {
-
     position: absolute;
-
     right: 5px;
-
     top: 50%;
-
     transform: translateY(-50%);
-
     background-color: #007bff;
-
     color: white;
-
     border: none;
-
     width: 45px;
-
     height: 45px;
-
     border-radius: 6px; /* Rounded rectangle button */
-
     cursor: pointer;
-
     font-size: 1.2em;
-
     display: flex;
-
     justify-content: center;
-
     align-items: center;
-
     transition: background-color 0.2s ease;
-
 }
-
-
 
 #search-button:hover {
-
     background-color: #0056b3;
-
 }
-
-
 
 #search-button:hover {
-
     background-color: #0056b3;
-
 }
-
-
 
 /* --- 신규 스타일: AI 검색 결과 --- */
-
 #ai-search-result-container {
-
     padding: 20px;
-
     background-color: #f9f9f9;
-
     border-radius: 12px;
-
     border: 1px solid #eee;
-
 }
-
-
 
 .ai-search-header {
-
     display: flex;
-
     justify-content: space-between;
-
     align-items: center;
-
     margin-bottom: 20px;
-
     padding-bottom: 15px;
-
     border-bottom: 1px solid #e0e0e0;
-
 }
-
-
 
 .ai-search-header h3 {
-
     margin: 0;
-
     font-size: 1.4em;
-
     color: #333;
-
 }
-
-
 
 #back-to-list-btn {
-
     padding: 8px 16px;
-
     background-color: #fff;
-
     border: 1px solid #ccc;
-
     border-radius: 6px;
-
     cursor: pointer;
-
     font-size: 0.9em;
-
     transition: all 0.2s ease;
-
 }
-
-
 
 #back-to-list-btn:hover {
-
     background-color: #f0f0f0;
-
 }
-
-
 
 .ai-result-box {
-
     line-height: 1.7;
-
     font-size: 1.05em;
-
 }
-
-
 
 /* --- 신규 스타일: 마감 임박 위젯 --- */
-
 .deadline-box {
-
     background-color: #fff7e6;
-
     border: 1px solid #ffe8b3;
-
     padding: 20px;
-
     border-radius: 8px;
-
     margin-top: 20px;
-
 }
-
-
 
 .deadline-box h4 {
-
     margin: 0 0 10px 0;
-
     color: #d98600;
-
     font-size: 1.2em;
-
 }
-
-
 
 .deadline-box p {
-
     font-size: 0.9em;
-
     color: #666;
-
     margin: 0;
-
 }
-
-
 
 .deadline-list {
-
     list-style: none;
-
     padding: 0;
-
     margin-top: 15px;
-
 }
-
-
 
 .deadline-list li {
-
     margin-bottom: 5px;
-
 }
-
-
 
 .deadline-list li:last-child {
-
     margin-bottom: 0;
-
 }
-
-
 
 .deadline-list a {
-
     text-decoration: none;
-
     color: inherit;
-
     display: block;
-
     padding: 10px;
-
     border-radius: 6px;
-
     transition: background-color 0.2s ease;
-
 }
-
-
 
 .deadline-list a:hover {
-
     background-color: #f0f0f0;
-
 }
-
-
 
 .deadline-title {
-
     font-size: 1.05em;
-
     font-weight: 600;
-
     color: #333;
-
     display: block;
-
     margin-bottom: 5px;
-
 }
-
-
 
 .deadline-details {
-
     font-size: 0.9em;
-
     color: #666;
-
     display: flex;
-
     justify-content: space-between;
-
 }
-
-
 
 /* --- Form Container (새 모임 만들기) --- */
-
 .form-container {
-
     width: 100%;
-
     max-width: 600px;
-
     margin: 0 auto;
-
     padding: 30px;
-
     background-color: #fff;
-
     border-radius: 12px;
-
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-
 }
-
-
 
 .form-container h2 {
-
     font-size: 1.8em;
-
     color: #333;
-
     margin-top: 0;
-
     margin-bottom: 35px;
-
     text-align: center;
-
     font-weight: 600;
-
 }
-
-
 
 /* 폼 그룹 및 라벨 스타일 */
-
 .form-group {
-
     margin-bottom: 22px;
-
 }
-
-
 
 .form-group label {
-
     display: block;
-
     font-weight: 500;
-
     margin-bottom: 8px;
-
     color: #555;
-
     font-size: 0.95em;
-
 }
-
-
 
 /* 모든 입력창 공통 스타일 */
-
 .form-group input[type="text"],
-
 .form-group input[type="number"],
-
 .form-group input[type="date"],
-
 .form-group input[type="time"],
-
 .form-group select,
-
 .form-group textarea {
-
     width: 100%;
-
     padding: 12px 15px;
-
     border: 1px solid #ddd;
-
     border-radius: 6px;
-
     font-size: 1em;
-
     box-sizing: border-box;
-
     background-color: #fff;
-
     -webkit-appearance: none;
-
     -moz-appearance: none;
-
     appearance: none;
-
 }
-
-
 
 .form-group input::placeholder,
-
 .form-group textarea::placeholder {
-
     color: #bbb;
-
 }
-
-
 
 .form-group textarea {
-
     resize: vertical;
-
     min-height: 120px;
-
 }
-
-
 
 /* 커스텀 파일 업로드 UI */
-
 .file-upload-wrapper {
-
     display: flex;
-
     align-items: center;
-
 }
-
-
 
 .file-upload-hidden {
-
     display: none;
-
 }
-
-
 
 .file-upload-button {
-
     display: inline-block;
-
     padding: 10px 18px;
-
     background-color: #f0f2f5;
-
     color: #333;
-
     border: 1px solid #ddd;
-
     border-radius: 6px;
-
     cursor: pointer;
-
     transition: background-color 0.2s ease;
-
     font-size: 0.95em;
-
     font-weight: 500;
-
 }
-
-
 
 .file-upload-button:hover {
-
     background-color: #e9ecef;
-
 }
-
-
 
 .file-upload-name {
-
     margin-left: 15px;
-
     color: #888;
-
     font-size: 0.9em;
-
 }
-
-
 
 /* 날짜/시간 입력창 그룹 */
-
 .datetime-group {
-
     display: flex;
-
     border: 1px solid #ddd;
-
     border-radius: 6px;
-
     overflow: hidden;
-
 }
-
-
 
 .datetime-group input[type="date"],
-
 .datetime-group input[type="time"] {
-
     border: none;
-
     flex-grow: 1;
-
     border-radius: 0;
-
 }
-
-
 
 .datetime-group input[type="date"] {
-
     border-right: 1px solid #ddd;
-
 }
-
-
 
 .datetime-group:focus-within {
-
     border-color: #007bff;
-
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
-
 }
-
-
 
 .form-footer {
-
     margin-top: 30px;
-
     text-align: right;
-
 }
-
-
 
 /* --- Meeting Detail Page --- */
-
 .meeting-detail-container {
-
     width: 100%;
-
     max-width: 800px;
-
     margin: 0 auto;
-
     padding: 30px;
-
     background-color: #fff;
-
     border-radius: 12px;
-
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-
 }
-
-
 
 .detail-header {
-
     text-align: center;
-
     margin-bottom: 20px;
-
 }
-
-
 
 .card-status {
-
     display: inline-block;
-
     padding: 4px 10px;
-
     border-radius: 12px;
-
     font-size: 14px;
-
     font-weight: 500;
-
     margin-bottom: 10px;
-
 }
-
-
 
 .card-status.recruiting {
-
     background-color: #e8f5e9;
-
     color: #2e7d32;
-
 }
-
-
 
 .card-status.completed {
-
     background-color: #f3f4f6;
-
     color: #4b5563;
-
 }
-
-
 
 .detail-header h2 {
-
     font-size: 24px;
-
     font-weight: 600;
-
     margin: 0;
-
 }
-
-
 
 .detail-image-container {
-
     width: 100%;
-
     height: 350px;
-
     overflow: hidden;
-
     border-radius: 8px;
-
     margin-bottom: 20px;
-
 }
-
-
 
 .detail-image-container img {
-
     width: 100%;
-
     height: 100%;
-
     object-fit: cover;
-
 }
-
-
 
 .detail-grid {
-
     display: grid;
-
     grid-template-columns: repeat(2, 1fr);
-
     gap: 15px;
-
     margin-bottom: 20px;
-
     padding: 15px;
-
     background-color: #f9f9f9;
-
     border-radius: 8px;
-
 }
-
-
 
 .detail-grid .detail-item {
-
     font-size: 15px;
-
 }
-
-
 
 .detail-grid .detail-item strong {
-
     display: block;
-
     color: #888;
-
     font-weight: 500;
-
     margin-bottom: 5px;
-
     font-size: 13px;
-
 }
-
-
 
 .detail-description {
-
     line-height: 1.6;
-
     color: #333;
-
     margin-bottom: 20px;
-
 }
-
-
 
 .participants-section {
-
     margin-top: 20px;
-
     padding-top: 20px;
-
     border-top: 1px solid #eee;
-
 }
-
-
 
 .participants-section h4 {
-
     font-size: 16px;
-
     font-weight: 600;
-
     margin-bottom: 10px;
-
 }
-
-
 
 #participants-list {
-
     list-style: none;
-
     padding: 0;
-
 }
-
-
 
 #participants-list li {
-
     padding: 5px 0;
-
 }
-
-
 
 .detail-footer {
-
     margin-top: 30px;
-
     display: flex;
-
     justify-content: flex-end;
-
     gap: 10px;
-
 }
-
-
 
 .btn-primary, .btn-danger, .btn-cancel, .btn-secondary {
-
     padding: 12px 28px;
-
     color: #ffffff;
-
     border: none;
-
     border-radius: 8px;
-
     font-size: 1.05em;
-
     font-weight: 500;
-
     cursor: pointer;
-
     transition: background-color 0.2s ease;
-
     text-decoration: none;
-
 }
-
-
 
 .btn-primary { background-color: #007bff; }
-
 .btn-primary:hover { background-color: #0056b3; }
-
 .btn-danger { background-color: #f44336; }
-
 .btn-danger:hover { background-color: #d32f2f; }
-
 .btn-cancel { background-color: #6c757d; }
-
 .btn-cancel:hover { background-color: #5a6268; }
-
 .btn-secondary { background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }
-
 .btn-secondary:hover { background-color: #e2e6ea; }
 
-
-
 /* Similar Meetings Modal */
-
 .modal-backdrop {
-
     position: fixed;
-
     top: 0;
-
     left: 0;
-
     width: 100%;
-
     height: 100%;
-
     background: rgba(0,0,0,0.6);
-
     display: flex;
-
     justify-content: center;
-
     align-items: center;
-
     z-index: 1000;
-
 }
-
-
 
 .modal-content {
-
     background: white;
-
     padding: 30px;
-
     border-radius: 15px;
-
     max-width: 500px;
-
     width: 90%;
-
     position: relative;
-
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-
 }
-
-
 
 .modal-close-btn {
-
     position: absolute;
-
     top: 15px;
-
     right: 15px;
-
     background: none;
-
     border: none;
-
     font-size: 1.8em;
-
     color: #aaa;
-
     cursor: pointer;
-
 }
-
-
 
 .modal-content h2 {
-
     margin-top: 0;
-
     margin-bottom: 10px;
-
     font-size: 1.5em;
-
 }
-
-
 
 .modal-content p {
-
     margin-bottom: 20px;
-
     color: #666;
-
 }
-
-
 
 #similar-meetings-list {
-
     margin-bottom: 20px;
-
     max-height: 200px;
-
     overflow-y: auto;
-
 }
-
-
 
 .similar-meeting-item {
-
     display: flex;
-
     justify-content: space-between;
-
     align-items: center;
-
     padding: 10px;
-
     border-radius: 8px;
-
     transition: background-color 0.2s ease;
-
 }
-
-
 
 .similar-meeting-item:hover {
-
     background-color: #f5f5f5;
-
 }
-
-
 
 .similar-meeting-info strong {
-
     display: block;
-
     font-weight: 600;
-
 }
-
-
 
 .similar-meeting-info span {
-
     font-size: 0.9em;
-
     color: #888;
-
 }
 
-
-
 .modal-footer {
-
     text-align: right;
-
     margin-top: 20px;
-
 }
