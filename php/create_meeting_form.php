@@ -111,7 +111,7 @@ unset($_SESSION['form_data']);
     <script src="/js/navbar.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 파일 업로드 UI 스크립트
+            // 파일 업로드 UI 스크립트 (기존과 동일)
             const fileInput = document.getElementById('image');
             const fileButton = document.querySelector('.file-upload-button');
             const fileNameSpan = document.querySelector('.file-upload-name');
@@ -134,7 +134,8 @@ unset($_SESSION['form_data']);
 
             // 모임 생성 폼 제출 핸들링 (AI 유사 모임 체크)
             const meetingForm = document.getElementById('meetingForm');
-            const submitBtn = document.getElementById('submitBtn'); // [수정됨] 버튼 ID로 가져오기
+            // [수정 2/4] ID로 '생성하기' 버튼 선택
+            const submitBtn = document.getElementById('submitBtn'); 
             const modal = document.getElementById('similarMeetingsModal');
             const closeBtn = document.querySelector('.modal-close-btn');
             const forceCreateBtn = document.getElementById('forceCreateBtn');
@@ -146,7 +147,7 @@ unset($_SESSION['form_data']);
 
                     const formData = new FormData(meetingForm);
                     
-                    // [수정됨] 버튼 텍스트 변경 및 비활성화
+                    // [수정 3/4] 버튼 텍스트 '분석중...'으로 변경 및 비활성화
                     submitBtn.disabled = true;
                     submitBtn.textContent = '분석중...';
 
@@ -157,7 +158,7 @@ unset($_SESSION['form_data']);
                     })
                     .then(response => response.json())
                     .then(data => {
-                        // [수정됨] 버튼 텍스트 복원
+                        // [수정 4/4] 버튼 텍스트 '생성하기'로 복원 및 활성화
                         submitBtn.disabled = false;
                         submitBtn.textContent = '생성하기';
 
@@ -184,7 +185,7 @@ unset($_SESSION['form_data']);
                     })
                     .catch(error => {
                         console.error('Error checking similar meetings:', error);
-                        // [수정됨] 버튼 텍스트 복원
+                        // [수정 4/4] 에러 발생 시에도 버튼 텍스트 '생성하기'로 복원
                         submitBtn.disabled = false;
                         submitBtn.textContent = '생성하기';
                         
@@ -194,14 +195,14 @@ unset($_SESSION['form_data']);
                 });
             }
 
-            // 모달 닫기 버튼
+            // 모달 닫기 버튼 (기존과 동일)
             if (closeBtn) {
                 closeBtn.addEventListener('click', () => {
                     modal.style.display = 'none';
                 });
             }
 
-            // '무시하고 계속 만들기' 버튼
+            // '무시하고 계속 만들기' 버튼 (기존과 동일)
             if (forceCreateBtn) {
                 forceCreateBtn.addEventListener('click', () => {
                     // 모달을 숨기고 폼을 제출합니다.
@@ -210,7 +211,7 @@ unset($_SESSION['form_data']);
                 });
             }
             
-            // 모달 바깥 영역 클릭 시 닫기
+            // 모달 바깥 영역 클릭 시 닫기 (기존과 동일)
             if (modal) {
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
