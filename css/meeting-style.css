@@ -147,6 +147,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* 카드 최소 너비 조정 */
     gap: 25px;
+    padding-right: 10px; /* [추가] 오른쪽 여백 추가 */
 }
 
 .meeting-card-link {
