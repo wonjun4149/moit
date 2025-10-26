@@ -40,7 +40,6 @@ try {
     $pdo = getDBConnection();
     debug_output("데이터베이스 연결 성공");
 
-    // MOIT 통계 데이터 가져오기 (오른쪽 섹션의 기본 표시용)
     // MOIT 통계 데이터 가져오기
     // 1. 총 모임 수
     $stmt_total_meetings = $pdo->query("SELECT COUNT(*) as total_meetings FROM meetings");
@@ -48,7 +47,6 @@ try {
 
     // 2. 가장 인기있는 카테고리
     $stmt_popular_category = $pdo->query("SELECT category FROM meetings GROUP BY category ORDER BY COUNT(*) DESC LIMIT 1");
-    $popular_category = $stmt_popular_category->fetchColumn() ?: '아직 없음';
     $popular_category = $stmt_popular_category->fetchColumn();
     if (!$popular_category) {
         $popular_category = '아직 없음';
@@ -64,7 +62,7 @@ try {
 }
 
 debug_output("최종 상태", [
-    'recommendations_count' => count($recommendations), // 이 페이지는 이제 AJAX로 결과를 받으므로 항상 0
+    'recommendations_count' => count($recommendations),
     'error_message' => $error_message
 ]);
 ?>
@@ -80,7 +78,6 @@ debug_output("최종 상태", [
 </head>
 <body>
     <?php if ($debug_mode): ?>
-        <?php endif; ?>
         <div style="background: #ffffcc; padding: 15px; margin: 10px; border: 2px solid #ffcc00;">
             <h3>🐛 디버그 모드 활성화</h3>
             <p><strong>현재 상태:</strong></p>
@@ -121,12 +118,9 @@ debug_output("최종 상태", [
                         <?php endif; ?>
 
                         <?php
-                            // ### 설문 문항 정의 (Q1 ~ Q48) ###
-                            // (기존 코드와 동일하게 유지)
                             // ### 변경된 부분: 새로운 설문 문항 ###
                             $stage1_questions = [
                                 ['name' => 'Q1', 'label' => '1. 일주일에 새로운 활동을 위해 온전히 사용할 수 있는 시간은 어느 정도인가요?', 'type' => 'radio', 'options' => ['1시간 미만', '1시간 ~ 3시간', '3시간 ~ 5시간', '5시간 이상']],
-                                // ... (Q2 ~ Q12)
                                 ['name' => 'Q2', 'label' => '2. 한 달에 새로운 활동을 위해 부담 없이 지출할 수 있는 예산은 얼마인가요?', 'type' => 'radio', 'options' => ['거의 없음 또는 3만원 미만', '3만원 ~ 5만원', '5만원 ~ 10만원', '10만원 이상']],
                                 ['name' => 'Q3', 'label' => '3. 평소 하루를 보낼 때, 당신의 신체적 에너지 수준은 어느 정도라고 느끼시나요?', 'type' => 'likert', 'labels' => ['거의 방전', '매우 활기참']],
                                 ['name' => 'Q4', 'label' => '4. 집 밖의 다른 장소로 혼자 이동하는 것이 얼마나 편리한가요?', 'type' => 'likert', 'options_text' => ['매우 불편하고 거의 불가능하다.', '상당한 노력이 필요하다.', '보통이다.', '쉬운 편이다.', '매우 쉽고 편리하다.']],
@@ -141,7 +135,6 @@ debug_output("최종 상태", [
                             ];
                             $stage2_questions = [
                                 ['name' => 'Q13', 'label' => '13. "나는 어떤 일에 실패하거나 실수를 했을 때, 나 자신을 심하게 비난하고 자책하는 편이다."', 'type' => 'likert', 'options_text' => ['전혀 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다']],
-                                // ... (Q14 ~ Q30)
                                 ['name' => 'Q14', 'label' => '14. "나는 나의 단점이나 부족한 부분도 너그럽게 받아들이려고 노력한다."', 'type' => 'likert', 'options_text' => ['매우 그렇다', '그렇다', '보통이다', '그렇지 않다', '전혀 그렇지 않다']],
                                 ['name' => 'Q15', 'label' => '15. "나는 다른 사람의 평가나 시선에 매우 민감하다."', 'type' => 'likert', 'options_text' => ['전혀 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다']],
                                 ['name' => 'Q16', 'label' => '16. "나는 무언가를 할 때 \'완벽하게\' 해내야 한다는 압박감을 느낀다."', 'type' => 'likert', 'options_text' => ['전혀 그렇지 않다', '그렇지 않다', '보통이다', '그렇다', '매우 그렇다']],
@@ -162,7 +155,6 @@ debug_output("최종 상태", [
                             ];
                             $stage3_questions = [
                                 ['name' => 'Q31', 'label' => '31. 새로운 활동을 통해 당신이 가장 얻고 싶은 것은 무엇인가요? (가장 중요한 것 1개 선택)', 'type' => 'radio', 'options' => ['성취: 새로운 기술을 배우고 실력이 느는 것을 확인하는 것', '회복: 복잡한 생각에서 벗어나 편안하게 재충전하는 것', '연결: 좋은 사람들과 교류하며 소속감을 느끼는 것', '활력: 몸을 움직여 건강해지고 에너지를 얻는 것']],
-                                // ... (Q32 ~ Q48)
                                 ['name' => 'Q32', 'label' => '32. 다음 문장들 중, 현재 당신의 마음에 가장 와닿는 것은 무엇인가요?', 'type' => 'radio', 'options' => ['"무언가에 깊이 몰입해서 시간 가는 줄 모르는 경험을 하고 싶다."', '"결과물에 상관없이 과정 자체를 즐기고 싶다."', '"나도 누군가에게 도움이 되는 가치 있는 일을 하고 싶다."', '"그저 즐겁게 웃을 수 있는 시간이 필요하다."']],
                                 ['name' => 'Q33', 'label' => '33. 새로운 지식이나 기술을 배우는 것', 'type' => 'likert', 'labels' => ['전혀 중요하지 않음', '매우 중요함']],
                                 ['name' => 'Q34', 'label' => '34. 마음의 평화와 안정을 얻는 것', 'type' => 'likert', 'labels' => ['전혀 중요하지 않음', '매우 중요함']],
@@ -232,7 +224,6 @@ debug_output("최종 상태", [
                                             </div>
                                         </div>
                                     </div>
-                                <?php elseif ($q['type'] === 'checkbox'): ?>
                                 <?php elseif ($q['type'] === 'checkbox'): // ### 추가된 부분: 체크박스 유형 ### ?>
                                     <div class="question-group">
                                         <label class="question-label"><?php echo $q['label']; ?></label>
@@ -277,34 +268,40 @@ debug_output("최종 상태", [
             </div>
 
             <div class="right-section">
-                <h3>MOIT 통계</h3>
-                <div class="moit-stats">
-                    <div class="stat-item">
-                        <strong>총 모임수</strong>
-                        <span><?php echo $total_meetings; ?></span>
+                <?php if (!empty($recommendations)): ?>
+                    <!-- AI 추천 결과가 있을 경우 -->
+                    <div class="recommendations-container">
+                        <h3>🎉 맞춤 취미 추천 결과</h3>
+                        <div class="ai-recommendation-box" style="margin-top: 20px;">
+                            <?php 
+                                echo nl2br(htmlspecialchars($recommendations)); 
+                            ?>
+                        </div>
+                        <div class="survey-actions">
+                            <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <strong>가장 인기있는 카테고리</strong>
-                        <span><?php echo htmlspecialchars($popular_category); ?></span>
+                <?php else: ?>
+                    <!-- MOIT 통계 -->
+                    <h3>MOIT 통계</h3>
+                    <div class="moit-stats">
+                        <div class="stat-item">
+                            <strong>총 모임수</strong>
+                            <span><?php echo $total_meetings; ?></span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>가장 인기있는 카테고리</strong>
+                            <span><?php echo htmlspecialchars($popular_category); ?></span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>이번 주 새 멤버</strong>
+                            <span><?php echo $new_members_this_week; ?></span>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <strong>이번 주 새 멤버</strong>
-                        <span><?php echo $new_members_this_week; ?></span>
-                    </div>
-                </div>
+                <?php endif; ?>
             </div>
         </div>
     </main>
-
-    <div id="recommendation-modal-overlay" class="modal-overlay">
-        <div class="modal-content">
-            <h2>🎉 맞춤 취미 추천 결과</h2>
-            <div id="recommendation-content" class="ai-recommendation-box">
-                </div>
-            <button id="close-modal-btn" class="close-button">닫기</button>
-        </div>
-    </div>
-
 
     <script src="/js/navbar.js"></script>
     <script>
@@ -326,7 +323,6 @@ debug_output("최종 상태", [
             const stage2Header = document.getElementById('stage2-header');
             const stage3Header = document.getElementById('stage3-header');
 
-            // 사진 미리보기 기능 (기존과 동일)
             // 사진 미리보기 기능
             const photoInput = document.getElementById('hobby_photos');
             const photoPreview = document.getElementById('photo-preview');
@@ -345,7 +341,6 @@ debug_output("최종 상태", [
                 });
             }
 
-            // 라디오 버튼 자동 다음 (기존과 동일)
 
             const allRadioButtons = surveyForm.querySelectorAll('input[type="radio"]');
             allRadioButtons.forEach(radio => {
@@ -363,7 +358,6 @@ debug_output("최종 상태", [
             updateStepDisplay();
             updateProgress();
 
-            // 이전 버튼 (기존과 동일)
             prevBtn.addEventListener('click', function() {
                 if (currentStep > 1) {
                     currentStep--;
@@ -372,7 +366,6 @@ debug_output("최종 상태", [
                 }
             });
 
-            // 다음 버튼 (기존과 동일)
             nextBtn.addEventListener('click', function() {
                 if (validateCurrentStep()) {
                     if (currentStep < totalSteps) {
@@ -385,9 +378,7 @@ debug_output("최종 상태", [
                 }
             });
 
-            // 제출 버튼 (fetch 로직 수정됨)
             submitBtn.addEventListener('click', function(e) {
-                e.preventDefault(); 
                 e.preventDefault(); // 기본 폼 제출(새로고침)을 막습니다.
                 if (!validateCurrentStep()) {
                     alert('마지막 질문에 답변하거나 사진을 추가해주세요.');
@@ -412,13 +403,29 @@ debug_output("최종 상태", [
                 })
                 .then(data => {
                     if (data.success && data.recommendation) {
-                        // 모달에 결과 표시
-                        const modalOverlay = document.getElementById('recommendation-modal-overlay');
-                        const recommendationContent = document.getElementById('recommendation-content');
-                        
-                        // 응답 텍스트의 줄바꿈을 <br> 태그로 변환하여 HTML에 삽입
-                        recommendationContent.innerHTML = data.recommendation.replace(/\n/g, '<br>');
-                        modalOverlay.style.display = 'flex';
+                        // [수정] 성공 시, 화면 레이아웃을 변경하고 결과를 표시합니다.
+                        const leftSection = document.querySelector('.left-section');
+                        const rightSection = document.querySelector('.right-section');
+
+                        if (leftSection && rightSection) {
+                            // 1. 왼쪽 설문 영역을 숨깁니다.
+                            leftSection.style.display = 'none';
+
+                            // 2. 오른쪽 결과 영역을 넓게 만듭니다.
+                            rightSection.style.flex = '1';
+                            rightSection.style.maxWidth = '800px'; // 결과가 표시될 최대 너비
+                            rightSection.innerHTML = `
+                                <div class="recommendations-container">
+                                    <h3>🎉 맞춤 취미 추천 결과</h3>
+                                    <div class="ai-recommendation-box" style="margin-top: 20px;">
+                                        ${data.recommendation.replace(/\n/g, '<br>')}
+                                    </div>
+                                    <div class="survey-actions">
+                                        <a href="hobby_recommendation.php" class="btn-secondary">다시 추천받기</a>
+                                    </div>
+                                </div>
+                            `;
+                        }
                     } else {
                         alert('추천을 생성하는 데 실패했습니다: ' + (data.message || '알 수 없는 오류'));
                     }
@@ -434,7 +441,6 @@ debug_output("최종 상태", [
                 });
             });
 
-            // updateStepDisplay 함수 (기존과 동일)
             function updateStepDisplay() {
                 questionSteps.forEach(step => step.classList.remove('active'));
                 const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
@@ -445,14 +451,12 @@ debug_output("최종 상태", [
                 stage2Header.style.display = 'none';
                 stage3Header.style.display = 'none';
 
-                if (currentStep >= 1 && currentStep <= 12) { // 1단계: 1-12번
+                if (currentStep >= 1 && currentStep <= 12) {
                     stage1Header.style.display = 'block';
-                } else if (currentStep >= 13 && currentStep <= 30) { // 2단계: 13-30번
+                } else if (currentStep >= 13 && currentStep <= 30) {
                     stage2Header.style.display = 'block';
-                } else if (currentStep >= 31 && currentStep <= 48) { // 3단계: 31-48번
+                } else if (currentStep >= 31 && currentStep <= 48) {
                     stage3Header.style.display = 'block';
-                } else { // 49번 사진 업로드 단계에서는 모든 헤더 숨김
-                    // 이 블록이 없으면 49단계에서 stage3Header가 계속 보일 수 있습니다.
                 }
 
                 prevBtn.style.display = currentStep > 1 ? 'inline-block' : 'none';
@@ -466,14 +470,12 @@ debug_output("최종 상태", [
                 }
             }
 
-            // updateProgress 함수 (기존과 동일)
             function updateProgress() {
                 const progress = (currentStep / totalSteps) * 100;
                 if (progressFill) progressFill.style.width = progress + '%';
                 if (progressText) progressText.textContent = `${currentStep} / ${totalSteps}`;
             }
 
-            // validateCurrentStep 함수 (기존과 동일 - Q10 필수 선택 검사 포함)
             function validateCurrentStep() {
                 const currentQuestionStep = document.querySelector(`.question-step[data-step="${currentStep}"]`);
                 if (!currentQuestionStep) return false;
@@ -487,11 +489,10 @@ debug_output("최종 상태", [
                 const checkboxInputs = currentQuestionStep.querySelectorAll('input[type="checkbox"]');
                 if (checkboxInputs.length > 0) {
                     const checkedCheckbox = currentQuestionStep.querySelector('input[type="checkbox"]:checked');
-                    // Q10(data-step="10")은 하나 이상 선택해야 함
-                    if (currentQuestionStep.dataset.step === "10") {
-                        return checkedCheckbox !== null; 
-                    }
-                    return true; // Q10 이외의 체크박스는 선택 안해도 통과 (필수가 아님)
+                    // 체크박스는 하나도 선택 안 해도 넘어갈 수 있도록 true를 반환합니다. (필수가 아님)
+                    // 만약 필수로 만들고 싶다면 return checkedCheckbox !== null; 로 변경하세요.
+                    // Q10은 하나 이상 선택해야 하므로, 아래와 같이 수정
+                    return checkedCheckbox !== null;
                 }
 
                 const radioInput = currentQuestionStep.querySelector('input[type="radio"]');
@@ -501,30 +502,9 @@ debug_output("최종 상태", [
                 const checkedRadio = currentQuestionStep.querySelector(`input[name="${radioName}"]:checked`);
                 return checkedRadio !== null;
             }
-        } // 'if (surveyForm)' 끝
-
-        
-        // [새로 추가] 모달 닫기 이벤트 리스너
-        const modalOverlay = document.getElementById('recommendation-modal-overlay');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-
-        if (closeModalBtn && modalOverlay) {
-            // 닫기 버튼 클릭 시
-            closeModalBtn.addEventListener('click', function() {
-                modalOverlay.style.display = 'none';
-            });
-
-            // 모달 바깥의 어두운 영역(오버레이) 클릭 시
-            modalOverlay.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    modalOverlay.style.display = 'none';
-                }
-            });
         }
 
-        // loadMeetups 함수 (기존과 동일)
         function loadMeetups(hobbyId) {
-            window.location.href = `hobby_list.php?hobby_id=${hobbyId}`; 
             window.location.href = `hobby_list.php?hobby_id=${hobbyId}`; // hobby_recommendation.php -> hobby_list.php or your target page
         }
     </script>
