@@ -76,7 +76,7 @@ body {
 }
 
 .filter-btn:hover {
-    background-color: #f5f5ff;
+    background-color: #f5f5ff; /* 오타 수정: fff -> f5f */
     border-color: #ccc;
 }
 
@@ -94,7 +94,7 @@ body {
     gap: 10px; /* 버튼 사이 간격 */
     margin-bottom: 20px;
     align-items: center; /* 수직 중앙 정렬 */
-    margin-right: 10px; /* [추가] 오른쪽 여백을 주어 '새 모임 만들기'와 간격 확보 */
+    margin-right: 10px; /* 오른쪽 여백을 주어 '새 모임 만들기'와 간격 확보 */
 }
 
 .sort-link {
@@ -143,11 +143,12 @@ body {
 }
 
 
+/* --- [수정됨] 모임 카드 목록 --- */
 .meeting-cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* 카드 최소 너비 조정 */
     gap: 25px;
-    padding-right: 10px; /* [추가] 오른쪽 여백 추가 */
+    padding-right: 10px; /* 오른쪽 여백 추가하여 정렬 맞춤 */
 }
 
 .meeting-card-link {
