@@ -113,8 +113,6 @@ $site_title = "MOIT - 새 모임 만들기";
 
         if (createMeetingForm) {
             createMeetingForm.addEventListener('submit', function(event) {
-                event.preventDefault(); // 기본 폼 제출 중단
-
                 if (isSubmitting) return; // 이미 제출 중이면 중단
 
                 const dateInput = document.getElementById('create-date').value;
@@ -124,40 +122,11 @@ $site_title = "MOIT - 새 모임 만들기";
                     const selectedDateTime = new Date(dateInput + 'T' + timeInput);
                     const now = new Date();
                     if (selectedDateTime < now) {
+                        event.preventDefault(); // 폼 제출 중단
                         alert('지난 시간으로는 모임을 생성할 수 없습니다. 현재 시간 이후로 설정해주세요.');
                         return;
                     }
                 }
-
-                if (!this.checkValidity()) {
-                    this.reportValidity();
-                    return;
-                }
-
-                isSubmitting = true; // 제출 시작
-
-                const formData = new FormData(this);
-
-                fetch('check_similar_meetings.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.length > 0) {
-                        displaySimilarMeetings(data);
-                        similarMeetingsModal.style.display = 'flex';
-                    } else {
-                        createMeetingForm.submit(); // 비슷한 모임 없으면 바로 제출
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking for similar meetings:', error);
-                    createMeetingForm.submit(); // 에러 발생 시에도 생성은 가능하도록
-                })
-                .finally(() => {
-                    isSubmitting = false; // 제출 플래그 리셋
-                });
             });
         }
 
@@ -178,20 +147,6 @@ $site_title = "MOIT - 새 모임 만들기";
                 listElement.appendChild(meetingItem);
             });
         }
-
-        closeModalBtn.addEventListener('click', () => {
-            similarMeetingsModal.style.display = 'none';
-        });
-
-        forceCreateBtn.addEventListener('click', () => {
-            createMeetingForm.submit();
-        });
-
-        similarMeetingsModal.addEventListener('click', (e) => {
-            if (e.target === similarMeetingsModal) {
-                similarMeetingsModal.style.display = 'none';
-            }
-        });
 
     </script>
 </body>
