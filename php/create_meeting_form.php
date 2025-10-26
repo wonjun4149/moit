@@ -112,7 +112,13 @@ $site_title = "MOIT - 새 모임 만들기";
         let isSubmitting = false; // 중복 제출 방지 플래그
 
         if (createMeetingForm) {
+            // '생성하기' 버튼을 미리 찾아둡니다.
+            const submitButton = createMeetingForm.querySelector('button[type="submit"]');
+
             createMeetingForm.addEventListener('submit', function(event) {
+                // AI 분석이 시작되면 버튼 상태를 변경하고, 기본 제출을 막습니다.
+                event.preventDefault();
+
                 if (isSubmitting) return; // 이미 제출 중이면 중단
 
                 const dateInput = document.getElementById('create-date').value;
@@ -122,11 +128,25 @@ $site_title = "MOIT - 새 모임 만들기";
                     const selectedDateTime = new Date(dateInput + 'T' + timeInput);
                     const now = new Date();
                     if (selectedDateTime < now) {
-                        event.preventDefault(); // 폼 제출 중단
                         alert('지난 시간으로는 모임을 생성할 수 없습니다. 현재 시간 이후로 설정해주세요.');
                         return;
                     }
                 }
+
+                if (!this.checkValidity()) {
+                    this.reportValidity();
+                    return;
+                }
+
+                isSubmitting = true;
+                if (submitButton) {
+                    submitButton.textContent = '생성 중...';
+                    submitButton.disabled = true;
+                }
+
+                // 모든 검사를 통과하면 폼을 제출합니다.
+                // 이제 페이지가 create_meeting.php로 이동하며 AI 분석이 시작됩니다.
+                this.submit();
             });
         }
 
