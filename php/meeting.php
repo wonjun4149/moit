@@ -76,27 +76,32 @@ try {
 
                 <div id="meeting-list-container">
                     
-                   <div class="category-filters">
-                    <button class="filter-btn active" data-category="전체">
-                        <span role="img" aria-label="전체">🌐</span>  전체
-                    </button>
-                    <button class="filter-btn" data-category="취미 및 여가">
-                        <span role="img" aria-label="취미">🎨</span>  취미 및 여가
-                    </button>
-                    <button class="filter-btn" data-category="운동">
-                        <span role="img" aria-label="운동">⚽</span>  운동
-                    </button>
-                    <button class="filter-btn" data-category="스터디">
-                        <span role="img" aria-label="스터디">📚</span> 스터디
-                    </button>
-                    <button class="filter-btn" data-category="문화">
-                        <span role="img" aria-label="문화">🎭</span>  문화
-                    </button>
-                    <button class="filter-btn" data-category="봉사활동">
-                        <span role="img" aria-label="봉사">🤝</span>  봉사활동
-                    </button>
-                    </div>
-                        <button id="show-more-btn"> 더보기</button>
+                    <div class="category-filters">
+                        <button class="filter-btn active" data-category="전체">
+                            <img src="../img/all_icon.png" alt="전체" class="tag-icon"> # 전체
+                        </button>
+                        <button class="filter-btn" data-category="취미 및 여가">
+                            <img src="../img/hobby_icon.png" alt="취미 및 여가" class="tag-icon"> # 취미 및 여가
+                        </button>
+                        <button class="filter-btn" data-category="운동 및 액티비티">
+                            <img src="../img/activity_icon.png" alt="운동 및 액티비티" class="tag-icon"> # 운동 및 액티비티
+                        </button>
+                        <button class="filter-btn" data-category="성장 및 배움">
+                            <img src="../img/growth_icon.png" alt="성장 및 배움" class="tag-icon"> # 성장 및 배움
+                        </button>
+                        <button class="filter-btn" data-category="문화 및 예술">
+                            <img src="../img/culture_icon.png" alt="문화 및 예술" class="tag-icon"> # 문화 및 예술
+                        </button>
+                        <button class="filter-btn" data-category="푸드 및 드링크">
+                            <img src="../img/food_icon.png" alt="푸드 및 드링크" class="tag-icon"> # 푸드 및 드링크
+                        </button>
+                        <button class="filter-btn" data-category="여행 및 탐방">
+                            <img src="../img/travel_icon.png" alt="여행 및 탐방" class="tag-icon"> # 여행 및 탐방
+                        </button>
+                        <button class="filter-btn" data-category="봉사 및 참여" style="display: none;">
+                             <img src="../img/volunteer_icon.png" alt="봉사 및 참여" class="tag-icon"> # 봉사 및 참여
+                        </button>
+                        <button id="show-more-btn">v 더보기</button>
                     </div>
                     <div class="sorting-options">
                         <a href="#" class="sort-link active" data-sort="latest">최신순</a>
@@ -155,7 +160,7 @@ try {
                     <h3>AI 스마트 검색</h3>
                     <div class="search-input-wrapper">
                         <input type="text" id="search-input" placeholder="제목, 카테고리 검색">
-                        <button id="search-button">🔍</button>
+                        <button id="search-button">생성하기</button>
                     </div>
                 </div>
 
@@ -194,8 +199,10 @@ try {
                 meetingListContainer.style.display = 'none';
                 aiSearchResultContainer.style.display = 'block';
                 aiSearchResultContent.innerHTML = '<p class="loading-text">AI가 답변을 생성하고 있습니다. 잠시만 기다려주세요...</p>';
+                
+                // [수정 2/3] 버튼을 비활성화하고 텍스트를 "분석중..."으로 변경
                 searchButton.disabled = true;
-                searchButton.textContent = '🧠';
+                searchButton.textContent = '분석중...'; 
 
                 fetch('ai_search.php', {
                     method: 'POST',
@@ -223,8 +230,9 @@ try {
                     aiSearchResultContent.innerHTML = '<p class="error-text">AI 서버와 통신하는 데 실패했습니다. 잠시 후 다시 시도해주세요.</p>';
                 })
                 .finally(() => {
+                    // [수정 3/3] 버튼을 다시 활성화하고 텍스트를 "생성하기"로 복원
                     searchButton.disabled = false;
-                    searchButton.textContent = '🔍';
+                    searchButton.textContent = '생성하기';
                 });
             }
 
