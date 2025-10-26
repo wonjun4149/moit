@@ -50,7 +50,7 @@ $recommendations = $reco_data['recommendations'] ?? [];
                 <?php foreach ($recommendations as $rec): ?>
                     <div class="item">
                         <span class="item-title"><?= htmlspecialchars($rec['title']) ?></span>
-                        <a href="meeting_detail.php?id=<?= urlencode($rec['meeting_id']) ?>" class="btn btn-join" style="float: right;">참여하기</a>
+                        <a href="meeting_detail.php?id=<?= urlencode($rec['meeting_id']) ?>&from=recommend" class="btn btn-back" style="float: right;">상세 보기</a>
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
